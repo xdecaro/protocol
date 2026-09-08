@@ -1,0 +1,2 @@
+-- Protocol by xdecaro 1.1.0
+-- No schema changes. This release adds optional Core integration and Information diagnostics.
