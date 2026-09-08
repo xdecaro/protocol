@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.1.0 - 2026-09-08
+
+### Added
+- Optional Core by xdecaro 1.1+ integration using public Core contracts only.
+- Core Web Asset Manager UI primitives with safe local fallback.
+- Cross-product `EntityReference` and `RelationReference` adapter for future integrations.
+- Standard Information page with product, environment, connected components and diagnostics.
+- Detection of Core, Forms, Documents, Courses, Competitions and Membership without mandatory dependencies.
+
+### Changed
+- Protocol administrator UI can inherit Core design tokens when Core is available.
+- Version advanced to 1.1.0 to avoid distributing different 1.0.0 artifacts.
+
 ## 1.0.0 - 2026-09-08
 
 ### Added
