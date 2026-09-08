@@ -38,6 +38,6 @@ class HtmlView extends BaseHtmlView
     {
         ToolbarHelper::title(Text::_('COM_DECAROPROTOCOL_REGISTERS'), 'folder');
         ToolbarHelper::addNew('register.add');
-        ToolbarHelper::deleteList('JGLOBAL_CONFIRM_DELETE', 'register.delete');
+        ToolbarHelper::deleteList('JGLOBAL_CONFIRM_DELETE', 'registers.delete');
     }
 }
