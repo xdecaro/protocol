@@ -7,6 +7,7 @@ on:
       - "component/**"
       - "package/**"
       - "tools/build.php"
+      - "VERSION"
       - ".github/workflows/build.yml"
   workflow_dispatch:
 
@@ -25,6 +26,7 @@ jobs:
           set -euo pipefail
           VERSION="$(php -r '$x=simplexml_load_file("package/pkg_decaroprotocol.xml"); echo trim((string)$x->version);')"
           test -n "$VERSION"
+          test "$(tr -d '\r\n' < VERSION)" = "$VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
       - name: Validate PHP XML JSON and schema marker
         shell: bash
@@ -37,6 +39,13 @@ jobs:
           php -r '$data=json_decode(file_get_contents("component/media/joomla.asset.json"), true); if (!is_array($data) || json_last_error() !== JSON_ERROR_NONE) { exit(1); }'
           VERSION="${{ steps.version.outputs.version }}"
           test -f "component/admin/sql/updates/mysql/${VERSION}.sql"
+          test -f "component/admin/src/Service/CoreIntegrationService.php"
+          test -f "component/admin/src/Helper/InformationHelper.php"
+          test -f "component/admin/src/View/Information/HtmlView.php"
+          test -f "component/admin/tmpl/information/default.php"
+          test -f "component/media/css/information.css"
+          grep -F 'Xdecaro\\Core\\Asset\\AssetService' component/admin/src/Service/CoreIntegrationService.php
+          grep -F 'EntityReference' component/admin/src/Service/CoreIntegrationService.php
       - name: Build ZIP
         run: php tools/build.php
       - name: Verify installable ZIP structure
@@ -46,12 +55,19 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           C="dist/com_decaroprotocol_${VERSION}.zip"
           P="dist/pkg_decaroprotocol_${VERSION}.zip"
+          test -f "$C"
+          test -f "$P"
           unzip -t "$C"
           unzip -t "$P"
           unzip -p "$C" decaroprotocol.xml | grep -F "<version>${VERSION}</version>"
           unzip -p "$P" pkg_decaroprotocol.xml | grep -F "<version>${VERSION}</version>"
           unzip -l "$C" | grep -F "admin/services/provider.php"
           unzip -l "$C" | grep -F "admin/sql/updates/mysql/${VERSION}.sql"
+          unzip -l "$C" | grep -F "admin/src/Service/CoreIntegrationService.php"
+          unzip -l "$C" | grep -F "admin/src/Helper/InformationHelper.php"
+          unzip -l "$C" | grep -F "admin/tmpl/information/default.php"
+          unzip -l "$C" | grep -F "media/css/information.css"
+          unzip -p "$C" media/joomla.asset.json | grep -F '"com_decaroprotocol.information"'
       - name: Upload Joomla packages
         uses: actions/upload-artifact@v4
         with:
