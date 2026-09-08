@@ -44,7 +44,7 @@ jobs:
           test -f "component/admin/src/View/Information/HtmlView.php"
           test -f "component/admin/tmpl/information/default.php"
           test -f "component/media/css/information.css"
-          grep -F 'Xdecaro\\Core\\Asset\\AssetService' component/admin/src/Service/CoreIntegrationService.php
+          grep -F 'AssetService' component/admin/src/Service/CoreIntegrationService.php
           grep -F 'EntityReference' component/admin/src/Service/CoreIntegrationService.php
       - name: Build ZIP
         run: php tools/build.php
