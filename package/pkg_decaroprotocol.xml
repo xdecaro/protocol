@@ -2,13 +2,13 @@
 <extension type="package" method="upgrade">
   <name>PKG_DECAROPROTOCOL</name>
   <packagename>decaroprotocol</packagename>
-  <version>1.0.0</version>
+  <version>1.1.0</version>
   <creationDate>2026-09</creationDate>
   <author>Luca De Caro</author>
   <copyright>Copyright (C) 2026 Luca De Caro. All rights reserved.</copyright>
   <license>GNU General Public License version 2 or later</license>
   <description>Protocol by xdecaro - Joomla administrative protocol package.</description>
   <files folder="packages">
-    <file type="component" id="com_decaroprotocol">com_decaroprotocol_1.0.0.zip</file>
+    <file type="component" id="com_decaroprotocol">com_decaroprotocol_1.1.0.zip</file>
   </files>
 </extension>
