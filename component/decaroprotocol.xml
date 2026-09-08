@@ -6,7 +6,7 @@
   <copyright>Copyright (C) 2026 Luca De Caro. All rights reserved.</copyright>
   <license>GNU General Public License version 2 or later</license>
   <authorUrl>https://github.com/xdecaro/Protocol</authorUrl>
-  <version>1.0.0</version>
+  <version>1.1.0</version>
   <description>COM_DECAROPROTOCOL_XML_DESCRIPTION</description>
   <namespace path="src">Xdecaro\Component\Decaroprotocol</namespace>
 
@@ -16,6 +16,7 @@
       <menu view="dashboard">COM_DECAROPROTOCOL_DASHBOARD</menu>
       <menu view="records">COM_DECAROPROTOCOL_RECORDS</menu>
       <menu view="registers">COM_DECAROPROTOCOL_REGISTERS</menu>
+      <menu view="information">COM_DECAROPROTOCOL_INFORMATION</menu>
     </submenu>
     <files folder="admin">
       <filename>access.xml</filename>
