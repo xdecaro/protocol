@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<access component="com_decaroprotocol">
+  <section name="component">
+    <action name="core.admin" title="JACTION_ADMIN" />
+    <action name="core.manage" title="JACTION_MANAGE" />
+    <action name="core.create" title="JACTION_CREATE" />
+    <action name="core.edit" title="JACTION_EDIT" />
+    <action name="core.delete" title="JACTION_DELETE" />
+    <action name="protocol.protocol" title="COM_DECAROPROTOCOL_ACTION_PROTOCOL" description="COM_DECAROPROTOCOL_ACTION_PROTOCOL_DESC" />
+    <action name="protocol.manage_registers" title="COM_DECAROPROTOCOL_ACTION_MANAGE_REGISTERS" description="COM_DECAROPROTOCOL_ACTION_MANAGE_REGISTERS_DESC" />
+    <action name="protocol.audit" title="COM_DECAROPROTOCOL_ACTION_AUDIT" description="COM_DECAROPROTOCOL_ACTION_AUDIT_DESC" />
+  </section>
+</access>
