@@ -1,0 +1,2 @@
+-- Protocol 1.2.0
+-- No schema changes. Version marker for the Core 1.3 integration release.

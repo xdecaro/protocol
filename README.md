@@ -7,7 +7,7 @@ Protocol by xdecaro è il componente Joomla per registrazione amministrativa, nu
 - Componente: `com_decaroprotocol`
 - Pacchetto: `pkg_decaroprotocol`
 - Repository: `xdecaro/Protocol`
-- Versione corrente: `1.1.0`
+- Versione corrente: `1.2.0`
 - Obiettivo: Joomla 4, 5 e 6 quando tecnicamente possibile
 
 ## Confini
@@ -18,18 +18,18 @@ Documents resta il sistema documentale opzionale condiviso per storage, versioni
 
 ## Core by xdecaro
 
-Dalla versione 1.1.0 Protocol integra opzionalmente Core by xdecaro 1.1+ tramite API pubbliche verificate.
+Dalla versione 1.2.0 Protocol integra opzionalmente Core by xdecaro `1.3.0+` tramite il namespace canonico `xdecaro\Core` e le sole API pubbliche.
 
-Quando Core è disponibile, Protocol può usare:
+Quando Core è disponibile e compatibile, Protocol può usare:
 
 - design token e primitive UI condivise;
 - Web Asset Manager di Core;
 - `EntityReference` e `RelationReference` per integrazioni cross-product;
 - rilevamento versione e compatibilità nella pagina Informazioni.
 
-Core non è una dipendenza obbligatoria: se manca o non è compatibile, Protocol usa il proprio fallback locale senza perdere le funzioni di protocollo.
+Core non è una dipendenza obbligatoria: se manca, è precedente a `1.3.0` o non è compatibile, Protocol usa il proprio fallback locale senza perdere le funzioni di protocollo.
 
-La logica di numerazione, registri, protocolli e audit resta esclusivamente in Protocol.
+Il namespace deprecato `Xdecaro\Core` non viene consumato dal runtime Protocol. La logica di numerazione, registri, protocolli e audit resta esclusivamente in Protocol.
 
 ## Nucleo
 

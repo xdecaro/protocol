@@ -10,9 +10,10 @@ use Throwable;
 
 final class InformationHelper
 {
-    public const VERSION = '1.1.0';
+    public const VERSION = '1.2.0';
     public const MINIMUM_JOOMLA = '4.4.0';
     public const MINIMUM_PHP = '8.1.0';
+    public const MINIMUM_CORE = '1.3.0';
 
     private const EXPECTED_TABLES = [
         '#__decaroprotocol_registers',
@@ -72,12 +73,12 @@ final class InformationHelper
             // Diagnostic only: do not block the component.
         }
 
-        $coreVersion = class_exists(\Xdecaro\Core\Version::class)
-            ? (string) \Xdecaro\Core\Version::VERSION
+        $coreVersion = class_exists(\xdecaro\Core\Version::class)
+            ? trim((string) \xdecaro\Core\Version::VERSION)
             : '';
-        $coreContracts = class_exists(\Xdecaro\Core\Integration\EntityReference::class)
-            && class_exists(\Xdecaro\Core\Integration\RelationReference::class);
-        $coreAssets = class_exists(\Xdecaro\Core\Asset\AssetService::class);
+        $coreContracts = class_exists(\xdecaro\Core\Integration\EntityReference::class)
+            && class_exists(\xdecaro\Core\Integration\RelationReference::class);
+        $coreAssets = class_exists(\xdecaro\Core\Asset\AssetService::class);
 
         $connected = [];
         foreach (self::CONNECTED_COMPONENTS as $label => $element) {
@@ -115,7 +116,7 @@ final class InformationHelper
             'coreVersion' => $coreVersion,
             'coreContracts' => $coreContracts,
             'coreAssets' => $coreAssets,
-            'coreCompatible' => $coreVersion !== '' && version_compare($coreVersion, '1.1.0', '>='),
+            'coreCompatible' => $coreVersion !== '' && version_compare($coreVersion, self::MINIMUM_CORE, '>='),
             'connectedComponents' => $connected,
             'diagnostics' => $criticalChecks,
             'criticalCount' => $criticalCount,

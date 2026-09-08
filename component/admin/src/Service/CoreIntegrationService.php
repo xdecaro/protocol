@@ -12,18 +12,22 @@ use Joomla\CMS\WebAsset\WebAssetManager;
 final class CoreIntegrationService
 {
     private const COMPONENT = 'com_decaroprotocol';
-    private const MINIMUM_CORE_VERSION = '1.1.0';
+    private const MINIMUM_CORE_VERSION = '1.3.0';
 
     public function isAvailable(): bool
     {
-        return class_exists(\Xdecaro\Core\Integration\EntityReference::class)
-            && class_exists(\Xdecaro\Core\Integration\RelationReference::class);
+        $version = $this->getVersion();
+
+        return $version !== ''
+            && version_compare($version, self::MINIMUM_CORE_VERSION, '>=')
+            && class_exists(\xdecaro\Core\Integration\EntityReference::class)
+            && class_exists(\xdecaro\Core\Integration\RelationReference::class);
     }
 
     public function getVersion(): string
     {
-        return class_exists(\Xdecaro\Core\Version::class)
-            ? (string) \Xdecaro\Core\Version::VERSION
+        return class_exists(\xdecaro\Core\Version::class)
+            ? trim((string) \xdecaro\Core\Version::VERSION)
             : '';
     }
 
@@ -33,7 +37,7 @@ final class CoreIntegrationService
 
         return $version !== ''
             && version_compare($version, self::MINIMUM_CORE_VERSION, '>=')
-            && class_exists(\Xdecaro\Core\Asset\AssetService::class);
+            && class_exists(\xdecaro\Core\Asset\AssetService::class);
     }
 
     /**
@@ -47,7 +51,7 @@ final class CoreIntegrationService
         }
 
         try {
-            $service = new \Xdecaro\Core\Asset\AssetService();
+            $service = new \xdecaro\Core\Asset\AssetService();
 
             return $service->useComponents($webAssets);
         } catch (\Throwable) {
@@ -59,7 +63,7 @@ final class CoreIntegrationService
     {
         $this->assertAvailable();
 
-        return new \Xdecaro\Core\Integration\EntityReference(
+        return new \xdecaro\Core\Integration\EntityReference(
             self::COMPONENT,
             $entity,
             $id
@@ -76,19 +80,19 @@ final class CoreIntegrationService
     ): object {
         $this->assertAvailable();
 
-        $source = new \Xdecaro\Core\Integration\EntityReference(
+        $source = new \xdecaro\Core\Integration\EntityReference(
             self::COMPONENT,
             $sourceEntity,
             $sourceId
         );
 
-        $target = new \Xdecaro\Core\Integration\EntityReference(
+        $target = new \xdecaro\Core\Integration\EntityReference(
             $targetComponent,
             $targetEntity,
             $targetId
         );
 
-        return new \Xdecaro\Core\Integration\RelationReference(
+        return new \xdecaro\Core\Integration\RelationReference(
             $source,
             $target,
             $relationType
@@ -99,7 +103,7 @@ final class CoreIntegrationService
     {
         if (!$this->isAvailable()) {
             throw new \RuntimeException(
-                'Core by xdecaro integration is unavailable. Install a compatible Core before using cross-product references.'
+                'Core by xdecaro 1.3.0+ integration is unavailable. Install a compatible Core before using cross-product references.'
             );
         }
     }

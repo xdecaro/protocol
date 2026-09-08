@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.0 - 2026-09-09
+
+### Changed
+- Migrated optional Core consumption to the canonical `xdecaro\Core` namespace.
+- Core-backed reference and shared UI features now require Core by xdecaro 1.3.0+.
+- Updated Information diagnostics to detect Core 1.3.0+ through the canonical namespace.
+- Added CI guards against runtime use of the deprecated `Xdecaro\Core` namespace.
+- Preserved `com_decaroprotocol`, `pkg_decaroprotocol`, `Xdecaro\Component\Decaroprotocol` and all Protocol database tables.
+- No changes to numbering, registers, protocol records, audit data or Draft → Protocol behavior.
+
 ## 1.1.0 - 2026-09-08
 
 ### Added
