@@ -18,6 +18,7 @@ class RecordTable extends Table
     {
         $this->subject = trim((string) $this->subject);
         $this->direction = trim((string) $this->direction);
+        $this->document_date = trim((string) $this->document_date) === '' ? null : $this->document_date;
         $allowed = array('incoming', 'outgoing', 'internal');
 
         if ((int) $this->register_id < 1) {
