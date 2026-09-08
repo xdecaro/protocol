@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<form>
+  <fieldset name="details" label="COM_DECAROPROTOCOL_REGISTER_DETAILS">
+    <field name="id" type="hidden" />
+    <field name="title" type="text" label="JGLOBAL_TITLE" required="true" maxlength="255" filter="string" />
+    <field name="code" type="text" label="COM_DECAROPROTOCOL_CODE" required="true" maxlength="64" filter="cmd" description="COM_DECAROPROTOCOL_CODE_DESC" />
+    <field name="description" type="textarea" label="JGLOBAL_DESCRIPTION" rows="4" filter="string" />
+    <field name="numbering_mode" type="list" label="COM_DECAROPROTOCOL_NUMBERING_MODE" default="yearly" required="true">
+      <option value="yearly">COM_DECAROPROTOCOL_NUMBERING_YEARLY</option>
+    </field>
+    <field name="active" type="radio" layout="joomla.form.field.radio.switcher" label="JSTATUS" default="1">
+      <option value="0">JDISABLED</option>
+      <option value="1">JENABLED</option>
+    </field>
+    <field name="ordering" type="number" label="JFIELD_ORDERING_LABEL" default="0" filter="integer" />
+  </fieldset>
+</form>

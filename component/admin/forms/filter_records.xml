@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<form>
+  <fields name="filter">
+    <field name="search" type="text" label="JSEARCH_FILTER" hint="JSEARCH_FILTER" />
+    <field name="status" type="list" label="JSTATUS" onchange="this.form.submit();" default="">
+      <option value="">JOPTION_SELECT_PUBLISHED</option>
+      <option value="draft">COM_DECAROPROTOCOL_STATUS_DRAFT</option>
+      <option value="protocolled">COM_DECAROPROTOCOL_STATUS_PROTOCOLLED</option>
+    </field>
+    <field name="direction" type="list" label="COM_DECAROPROTOCOL_DIRECTION" onchange="this.form.submit();" default="">
+      <option value="">COM_DECAROPROTOCOL_DIRECTION_ALL</option>
+      <option value="incoming">COM_DECAROPROTOCOL_DIRECTION_INCOMING</option>
+      <option value="outgoing">COM_DECAROPROTOCOL_DIRECTION_OUTGOING</option>
+      <option value="internal">COM_DECAROPROTOCOL_DIRECTION_INTERNAL</option>
+    </field>
+    <field name="register_id" type="sql" label="COM_DECAROPROTOCOL_REGISTER" query="SELECT id AS value, title AS text FROM #__decaroprotocol_registers ORDER BY ordering,title" key_field="value" value_field="text" onchange="this.form.submit();">
+      <option value="">COM_DECAROPROTOCOL_REGISTER_ALL</option>
+    </field>
+  </fields>
+  <fields name="list">
+    <field name="fullordering" type="list" label="JGLOBAL_SORT_BY" default="r.created DESC" onchange="this.form.submit();">
+      <option value="r.created DESC">JDATE_DESC</option>
+      <option value="r.created ASC">JDATE_ASC</option>
+      <option value="r.protocol_number DESC">COM_DECAROPROTOCOL_NUMBER_DESC</option>
+      <option value="r.protocol_number ASC">COM_DECAROPROTOCOL_NUMBER_ASC</option>
+      <option value="r.subject ASC">JGLOBAL_TITLE_ASC</option>
+      <option value="r.subject DESC">JGLOBAL_TITLE_DESC</option>
+    </field>
+    <field name="limit" type="limitbox" label="JGLOBAL_LIST_LIMIT" default="20" onchange="this.form.submit();" />
+  </fields>
+</form>
