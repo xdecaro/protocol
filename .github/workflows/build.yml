@@ -6,9 +6,11 @@ on:
     paths:
       - "component/**"
       - "package/**"
+      - "updates/**"
       - "tools/build.php"
       - "VERSION"
       - ".github/workflows/build.yml"
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -17,8 +19,15 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['8.1', '8.3']
     steps:
       - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
       - name: Read version
         id: version
         shell: bash
@@ -28,16 +37,18 @@ jobs:
           test -n "$VERSION"
           test "$(tr -d '\r\n' < VERSION)" = "$VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-      - name: Validate PHP XML JSON schema marker and Core boundary
+      - name: Validate PHP XML JSON schema marker Core boundary and update feed
         shell: bash
         run: |
           set -euo pipefail
           find component tools -type f -name '*.php' -print0 | xargs -0 -n1 php -l
           while IFS= read -r -d '' FILE; do
             php -r 'libxml_use_internal_errors(true); if (simplexml_load_file($argv[1]) === false) { fwrite(STDERR, "XML non valido: {$argv[1]}\n"); exit(1); }' "$FILE"
-          done < <(find component package -type f -name '*.xml' -print0)
+          done < <(find component package updates -type f -name '*.xml' -print0)
           VERSION="${{ steps.version.outputs.version }}"
           php -r '$data=json_decode(file_get_contents("component/media/joomla.asset.json"), true); if (!is_array($data) || json_last_error() !== JSON_ERROR_NONE || ($data["version"] ?? "") !== $argv[1]) { exit(1); }' "$VERSION"
+          php -r '$x=simplexml_load_file("updates/pkg_decaroprotocol.xml"); if (!$x || trim((string)$x->update->version) !== $argv[1]) { exit(1); }' "$VERSION"
+          grep -F 'updates/pkg_decaroprotocol.xml' package/pkg_decaroprotocol.xml
           test -f "component/admin/sql/updates/mysql/${VERSION}.sql"
           test -f "component/admin/src/Service/CoreIntegrationService.php"
           test -f "component/admin/src/Helper/InformationHelper.php"
@@ -52,12 +63,16 @@ jobs:
           grep -F "MINIMUM_CORE = '1.3.0'" component/admin/src/Helper/InformationHelper.php
           grep -F "VERSION = '${VERSION}'" component/admin/src/Helper/InformationHelper.php
           grep -F 'EntityReference' component/admin/src/Service/CoreIntegrationService.php
-      - name: Build ZIP
-        run: php tools/build.php
-      - name: Verify installable ZIP structure
+      - name: Deterministic build A
+        run: |
+          php tools/build.php
+          cp dist/SHA256SUMS.txt /tmp/protocol-sums
+      - name: Deterministic build B and ZIP integrity
         shell: bash
         run: |
           set -euo pipefail
+          php tools/build.php
+          diff -u /tmp/protocol-sums dist/SHA256SUMS.txt
           VERSION="${{ steps.version.outputs.version }}"
           C="dist/com_decaroprotocol_${VERSION}.zip"
           P="dist/pkg_decaroprotocol_${VERSION}.zip"
@@ -75,9 +90,11 @@ jobs:
           unzip -l "$C" | grep -F "media/css/information.css"
           unzip -p "$C" media/joomla.asset.json | grep -F '"com_decaroprotocol.information"'
       - name: Upload Joomla packages
+        if: matrix.php == '8.3'
         uses: actions/upload-artifact@v4
         with:
           name: decaroprotocol-${{ steps.version.outputs.version }}
           path: |
             dist/com_decaroprotocol_${{ steps.version.outputs.version }}.zip
             dist/pkg_decaroprotocol_${{ steps.version.outputs.version }}.zip
+            dist/SHA256SUMS.txt

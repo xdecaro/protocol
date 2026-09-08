@@ -11,4 +11,7 @@
   <files folder="packages">
     <file type="component" id="com_decaroprotocol">com_decaroprotocol_1.2.0.zip</file>
   </files>
+  <updateservers>
+    <server type="extension" priority="1" name="Protocol by xdecaro">https://raw.githubusercontent.com/xdecaro/protocol/main/updates/pkg_decaroprotocol.xml</server>
+  </updateservers>
 </extension>
