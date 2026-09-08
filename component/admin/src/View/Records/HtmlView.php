@@ -7,6 +7,7 @@ use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\View\HtmlView as BaseHtmlView;
 use Joomla\CMS\Toolbar\ToolbarHelper;
+use Xdecaro\Component\Decaroprotocol\Administrator\Service\CoreIntegrationService;
 
 class HtmlView extends BaseHtmlView
 {
@@ -29,7 +30,14 @@ class HtmlView extends BaseHtmlView
             throw new \RuntimeException(implode("\n", $errors));
         }
 
-        Factory::getApplication()->getDocument()->getWebAssetManager()->useStyle('com_decaroprotocol.admin');
+        $wa = Factory::getApplication()->getDocument()->getWebAssetManager();
+        try {
+            Factory::getContainer()->get(CoreIntegrationService::class)->enableUi($wa);
+        } catch (\Throwable) {
+            // Core is optional; local Protocol styling remains available.
+        }
+        $wa->useStyle('com_decaroprotocol.admin');
+
         $this->addToolbar();
         parent::display($tpl);
     }
