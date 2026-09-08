@@ -7,7 +7,7 @@ use Joomla\CMS\Router\Route;
 
 HTMLHelper::_('behavior.multiselect');
 ?>
-<form action="<?php echo Route::_('index.php?option=com_decaroprotocol&view=registers'); ?>" method="post" name="adminForm" id="adminForm">
+<form action="<?php echo Route::_('index.php?option=com_decaroprotocol&view=registers'); ?>" method="post" name="adminForm" id="adminForm" class="xdecaro-scope decaroprotocol-admin">
     <?php echo HTMLHelper::_('searchtools.default', array('view' => 'registers')); ?>
     <table class="table table-striped decaroprotocol-table">
         <thead><tr><th class="w-1 text-center"><?php echo HTMLHelper::_('grid.checkall'); ?></th><th><?php echo Text::_('JGLOBAL_TITLE'); ?></th><th><?php echo Text::_('COM_DECAROPROTOCOL_CODE'); ?></th><th><?php echo Text::_('COM_DECAROPROTOCOL_NUMBERING_MODE'); ?></th><th><?php echo Text::_('JSTATUS'); ?></th></tr></thead>
