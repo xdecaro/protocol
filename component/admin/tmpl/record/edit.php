@@ -9,7 +9,7 @@ HTMLHelper::_('behavior.formvalidator');
 HTMLHelper::_('behavior.keepalive');
 $isProtocolled = !empty($this->item->id) && (string) $this->item->status !== 'draft';
 ?>
-<form action="<?php echo Route::_('index.php?option=com_decaroprotocol&layout=edit&id=' . (int) $this->item->id); ?>" method="post" name="adminForm" id="record-form" class="form-validate">
+<form action="<?php echo Route::_('index.php?option=com_decaroprotocol&layout=edit&id=' . (int) $this->item->id); ?>" method="post" name="adminForm" id="record-form" class="form-validate xdecaro-scope decaroprotocol-admin">
     <?php if ($isProtocolled) : ?>
         <div class="decaroprotocol-meta">
             <div class="decaroprotocol-meta__item"><span class="decaroprotocol-meta__label"><?php echo Text::_('COM_DECAROPROTOCOL_PROTOCOL_NUMBER'); ?></span><span class="decaroprotocol-identity"><?php echo (int) $this->item->protocol_number . '/' . (int) $this->item->protocol_year; ?></span></div>
