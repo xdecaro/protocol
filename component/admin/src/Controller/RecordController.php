@@ -3,12 +3,11 @@ namespace Xdecaro\Component\Decaroprotocol\Administrator\Controller;
 
 defined('_JEXEC') or die;
 
+use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\Controller\FormController;
 use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
-use Joomla\CMS\Uri\Uri;
-use Joomla\CMS\Factory;
 use Xdecaro\Component\Decaroprotocol\Administrator\Service\ProtocolService;
 
 class RecordController extends FormController
@@ -28,21 +27,27 @@ class RecordController extends FormController
         }
 
         $data = $this->input->post->get('jform', array(), 'array');
+        $existingId = (int) ($data['id'] ?? 0);
+        $requiredAction = $existingId > 0 ? 'core.edit' : 'core.create';
+
+        if (!$user->authorise($requiredAction, 'com_decaroprotocol')) {
+            throw new \RuntimeException(Text::_('JERROR_ALERTNOAUTHOR'), 403);
+        }
+
         $model = $this->getModel('Record');
+        // Joomla 4 can repopulate model state after save and hide the newly assigned id.
+        $model->getState();
 
         if (!$model->save($data)) {
             $this->setRedirect(
-                Route::_('index.php?option=com_decaroprotocol&view=record&layout=edit&id=' . (int) ($data['id'] ?? 0), false),
+                Route::_('index.php?option=com_decaroprotocol&view=record&layout=edit&id=' . $existingId, false),
                 $model->getError(),
                 'error'
             );
             return false;
         }
 
-        $id = (int) ($data['id'] ?? 0);
-        if ($id < 1) {
-            $id = (int) $model->getState('record.id');
-        }
+        $id = $existingId > 0 ? $existingId : (int) $model->getState('record.id');
 
         if ($id < 1) {
             $this->setRedirect(Route::_('index.php?option=com_decaroprotocol&view=records', false), Text::_('COM_DECAROPROTOCOL_ERROR_RECORD_ID'), 'error');
