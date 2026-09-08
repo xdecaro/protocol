@@ -42,7 +42,7 @@ class HtmlView extends BaseHtmlView
             ToolbarHelper::addNew('record.add');
         }
         if ($user->authorise('core.delete', 'com_decaroprotocol')) {
-            ToolbarHelper::deleteList('JGLOBAL_CONFIRM_DELETE', 'record.delete');
+            ToolbarHelper::deleteList('JGLOBAL_CONFIRM_DELETE', 'records.delete');
         }
     }
 }
