@@ -15,6 +15,7 @@ use Joomla\CMS\MVC\Factory\MVCFactoryInterface;
 use Joomla\Database\DatabaseInterface;
 use Joomla\DI\Container;
 use Joomla\DI\ServiceProviderInterface;
+use Xdecaro\Component\Decaroprotocol\Administrator\Service\CoreIntegrationService;
 use Xdecaro\Component\Decaroprotocol\Administrator\Service\ProtocolService;
 
 return new class () implements ServiceProviderInterface {
@@ -28,6 +29,11 @@ return new class () implements ServiceProviderInterface {
             function (Container $container) {
                 return new ProtocolService($container->get(DatabaseInterface::class));
             }
+        );
+
+        $container->share(
+            CoreIntegrationService::class,
+            static fn (): CoreIntegrationService => new CoreIntegrationService()
         );
 
         $container->set(
