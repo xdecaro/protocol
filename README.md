@@ -7,7 +7,7 @@ Protocol by xdecaro è il componente Joomla per registrazione amministrativa, nu
 - Componente: `com_decaroprotocol`
 - Pacchetto: `pkg_decaroprotocol`
 - Repository: `xdecaro/Protocol`
-- Versione iniziale: `1.0.0`
+- Versione corrente: `1.1.0`
 - Obiettivo: Joomla 4, 5 e 6 quando tecnicamente possibile
 
 ## Confini
@@ -16,9 +16,24 @@ Protocol gestisce l'identità amministrativa del documento: numero, anno, regist
 
 Documents resta il sistema documentale opzionale condiviso per storage, versioni, ACL documentali e download protetti. Protocol deve funzionare anche senza Documents installato.
 
-## Nucleo 1.0.0
+## Core by xdecaro
 
-La prima implementazione copre:
+Dalla versione 1.1.0 Protocol integra opzionalmente Core by xdecaro 1.1+ tramite API pubbliche verificate.
+
+Quando Core è disponibile, Protocol può usare:
+
+- design token e primitive UI condivise;
+- Web Asset Manager di Core;
+- `EntityReference` e `RelationReference` per integrazioni cross-product;
+- rilevamento versione e compatibilità nella pagina Informazioni.
+
+Core non è una dipendenza obbligatoria: se manca o non è compatibile, Protocol usa il proprio fallback locale senza perdere le funzioni di protocollo.
+
+La logica di numerazione, registri, protocolli e audit resta esclusivamente in Protocol.
+
+## Nucleo
+
+La base corrente comprende:
 
 1. registri configurabili;
 2. contatori separati per registro e anno;
@@ -27,6 +42,8 @@ La prima implementazione copre:
 5. blocco della normale modifica dopo la protocollazione;
 6. audit dell'assegnazione del numero;
 7. dashboard e ricerca amministrativa di base;
-8. build ZIP del componente e del package.
+8. pagina Informazioni e diagnostica;
+9. integrazione opzionale Core;
+10. build ZIP del componente e del package.
 
 Un numero assegnato non viene mai riutilizzato. Un protocollo protocollato non torna bozza tramite normale modifica.
