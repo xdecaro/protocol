@@ -10,10 +10,10 @@ use Throwable;
 
 final class InformationHelper
 {
-    public const VERSION = '1.4.0';
+    public const VERSION = '1.5.0';
     public const MINIMUM_JOOMLA = '4.4.0';
     public const MINIMUM_PHP = '8.1.0';
-    public const MINIMUM_CORE = '1.3.0';
+    public const MINIMUM_CORE = '1.4.0';
 
     private const EXPECTED_TABLES = [
         '#__decaroprotocol_registers',
@@ -28,6 +28,11 @@ final class InformationHelper
         'Courses' => 'com_decarocourses',
         'Competitions' => 'com_xdecarocompetitions',
         'Membership' => 'com_decaromembership',
+        'People' => 'com_xdecaropeople',
+        'Organizations' => 'com_xdecaroorganizations',
+        'Notifications' => 'com_xdecaronotifications',
+        'Tasks' => 'com_xdecarotasks',
+        'Analytics' => 'com_xdecaroanalytics',
     ];
 
     public static function getData(): array
@@ -40,6 +45,7 @@ final class InformationHelper
         $component = self::getExtension($db, 'component', 'com_decaroprotocol');
         $package = self::getExtension($db, 'package', 'pkg_decaroprotocol')
             ?? self::getExtension($db, 'package', 'decaroprotocol');
+        $analyticsPlugin = self::getPlugin($db, 'xdecaroanalytics', 'decaroprotocol');
 
         $componentVersion = self::manifestVersion($component) ?: self::VERSION;
         $packageVersion = self::manifestVersion($package);
@@ -77,7 +83,8 @@ final class InformationHelper
             ? trim((string) \xdecaro\Core\Version::VERSION)
             : '';
         $coreContracts = class_exists(\xdecaro\Core\Integration\EntityReference::class)
-            && class_exists(\xdecaro\Core\Integration\RelationReference::class);
+            && class_exists(\xdecaro\Core\Integration\RelationReference::class)
+            && class_exists(\xdecaro\Core\Integration\CapabilityRegistry::class);
         $coreAssets = class_exists(\xdecaro\Core\Asset\AssetService::class);
 
         $connected = [];
@@ -117,6 +124,8 @@ final class InformationHelper
             'coreContracts' => $coreContracts,
             'coreAssets' => $coreAssets,
             'coreCompatible' => $coreVersion !== '' && version_compare($coreVersion, self::MINIMUM_CORE, '>='),
+            'analyticsPluginInstalled' => $analyticsPlugin !== null,
+            'analyticsPluginEnabled' => (int) ($analyticsPlugin->enabled ?? 0) === 1,
             'connectedComponents' => $connected,
             'diagnostics' => $criticalChecks,
             'criticalCount' => $criticalCount,
@@ -128,15 +137,33 @@ final class InformationHelper
     {
         try {
             $query = $db->getQuery(true)
-                ->select([
-                    $db->quoteName('extension_id'),
-                    $db->quoteName('manifest_cache'),
-                    $db->quoteName('enabled'),
-                ])
+                ->select([$db->quoteName('extension_id'), $db->quoteName('manifest_cache'), $db->quoteName('enabled')])
                 ->from($db->quoteName('#__extensions'))
                 ->where($db->quoteName('type') . ' = :type')
                 ->where($db->quoteName('element') . ' = :element')
                 ->bind(':type', $type)
+                ->bind(':element', $element);
+
+            $record = $db->setQuery($query, 0, 1)->loadObject();
+
+            return $record ?: null;
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    private static function getPlugin(DatabaseInterface $db, string $folder, string $element): ?object
+    {
+        try {
+            $type = 'plugin';
+            $query = $db->getQuery(true)
+                ->select([$db->quoteName('extension_id'), $db->quoteName('manifest_cache'), $db->quoteName('enabled')])
+                ->from($db->quoteName('#__extensions'))
+                ->where($db->quoteName('type') . ' = :type')
+                ->where($db->quoteName('folder') . ' = :folder')
+                ->where($db->quoteName('element') . ' = :element')
+                ->bind(':type', $type)
+                ->bind(':folder', $folder)
                 ->bind(':element', $element);
 
             $record = $db->setQuery($query, 0, 1)->loadObject();

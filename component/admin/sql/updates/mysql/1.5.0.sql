@@ -1,0 +1,1 @@
+-- Protocol 1.5.0: public integration services and Analytics provider; no database schema changes.

@@ -12,7 +12,7 @@ use Joomla\CMS\WebAsset\WebAssetManager;
 final class CoreIntegrationService
 {
     private const COMPONENT = 'com_decaroprotocol';
-    private const MINIMUM_CORE_VERSION = '1.3.0';
+    private const MINIMUM_CORE_VERSION = '1.4.0';
 
     public function isAvailable(): bool
     {
@@ -40,6 +40,39 @@ final class CoreIntegrationService
             && class_exists(\xdecaro\Core\Asset\AssetService::class);
     }
 
+    public function hasCapabilityRegistry(): bool
+    {
+        return class_exists(\xdecaro\Core\Integration\Capability::class)
+            && class_exists(\xdecaro\Core\Integration\CapabilityRegistry::class);
+    }
+
+    /** @return array<int,object> */
+    public function getCapabilities(): array
+    {
+        if (!$this->hasCapabilityRegistry()) {
+            return [];
+        }
+
+        return [
+            new \xdecaro\Core\Integration\Capability(self::COMPONENT, 'protocol.records', '1'),
+            new \xdecaro\Core\Integration\Capability(self::COMPONENT, 'protocol.protocolize', '1'),
+            new \xdecaro\Core\Integration\Capability(self::COMPONENT, 'protocol.query', '1'),
+            new \xdecaro\Core\Integration\Capability(self::COMPONENT, 'protocol.documents', '1'),
+            new \xdecaro\Core\Integration\Capability(self::COMPONENT, 'protocol.analytics.provider', '1'),
+            new \xdecaro\Core\Integration\Capability(self::COMPONENT, 'protocol.notifications.bridge', '1'),
+            new \xdecaro\Core\Integration\Capability(self::COMPONENT, 'protocol.tasks.bridge', '1'),
+        ];
+    }
+
+    public function registerCapabilities(object $registry): void
+    {
+        if (!$this->hasCapabilityRegistry() || !$registry instanceof \xdecaro\Core\Integration\CapabilityRegistry) {
+            throw new \InvalidArgumentException('A Core 1.4 CapabilityRegistry is required.');
+        }
+
+        $registry->registerMany($this->getCapabilities());
+    }
+
     /**
      * Enables shared Core UI primitives when a compatible Core is installed.
      * Returns false instead of failing because Core is an optional dependency.
@@ -63,11 +96,7 @@ final class CoreIntegrationService
     {
         $this->assertAvailable();
 
-        return new \xdecaro\Core\Integration\EntityReference(
-            self::COMPONENT,
-            $entity,
-            $id
-        );
+        return new \xdecaro\Core\Integration\EntityReference(self::COMPONENT, $entity, $id);
     }
 
     public function createRelationReference(
@@ -80,30 +109,21 @@ final class CoreIntegrationService
     ): object {
         $this->assertAvailable();
 
-        $source = new \xdecaro\Core\Integration\EntityReference(
-            self::COMPONENT,
-            $sourceEntity,
-            $sourceId
-        );
-
+        $source = new \xdecaro\Core\Integration\EntityReference(self::COMPONENT, $sourceEntity, $sourceId);
         $target = new \xdecaro\Core\Integration\EntityReference(
             $targetComponent,
             $targetEntity,
             $targetId
         );
 
-        return new \xdecaro\Core\Integration\RelationReference(
-            $source,
-            $target,
-            $relationType
-        );
+        return new \xdecaro\Core\Integration\RelationReference($source, $target, $relationType);
     }
 
     private function assertAvailable(): void
     {
         if (!$this->isAvailable()) {
             throw new \RuntimeException(
-                'Core by xdecaro 1.3.0+ integration is unavailable. Install a compatible Core before using cross-product references.'
+                'Core by xdecaro 1.4.0+ integration is unavailable. Install a compatible Core before using cross-product references.'
             );
         }
     }
