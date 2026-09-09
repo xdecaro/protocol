@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.3.0 - 2026-09-09
+
+### Added
+- Optional Documents 1.2.0+ integration through the public Joomla component facade and Documents relation API.
+- Public Protocol cross-product entity type `record` for document relations.
+- `DocumentsIntegrationService` with attach, detach and query operations using Core `EntityReference` / `RelationReference`.
+- Protocol-side ACL and record-existence validation before delegating to Documents.
+
+### Changed
+- Corrected Competitions detection in Information diagnostics to `com_xdecarocompetitions`.
+- Added CI boundaries that forbid direct Protocol access to `#__decarodocuments_*` tables and require the provider-owned Documents facade.
+- Preserved optional Core/Documents behavior: numbering, registers, records and audit continue to work without Documents.
+- No database schema changes; `1.3.0.sql` is a Joomla schema-version marker only.
+
 ## 1.2.0 - 2026-09-09
 
 ### Changed
