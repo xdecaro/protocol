@@ -29,11 +29,14 @@ $runtime = implode("\n", [$service, $provider, $info, $protocol, $controller, $v
 
 $requiredServiceFragments = [
     "DOCUMENTS_COMPONENT = 'com_decarodocuments'",
+    "MINIMUM_DOCUMENTS_VERSION = '1.2.1'",
     "PROTOCOL_COMPONENT = 'com_decaroprotocol'",
     "PROTOCOL_ENTITY = 'record'",
     "DEFAULT_RELATION_TYPE = 'attachment'",
     'bootComponent(self::DOCUMENTS_COMPONENT)',
     'getRelationService',
+    '$this->assertDocumentsVersionCompatible()',
+    "from(\$this->db->quoteName('#__extensions'))",
     '$this->assertProtocolPermission(\'core.manage\')',
     '$this->assertProtocolPermission(\'core.edit\')',
     'authorise($action, self::PROTOCOL_COMPONENT)',
