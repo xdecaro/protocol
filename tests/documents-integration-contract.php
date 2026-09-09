@@ -7,8 +7,11 @@ $serviceFile = $root . '/component/admin/src/Service/DocumentsIntegrationService
 $providerFile = $root . '/component/admin/services/provider.php';
 $infoFile = $root . '/component/admin/src/Helper/InformationHelper.php';
 $protocolFile = $root . '/component/admin/src/Service/ProtocolService.php';
+$controllerFile = $root . '/component/admin/src/Controller/RecordController.php';
+$viewFile = $root . '/component/admin/src/View/Record/HtmlView.php';
+$templateFile = $root . '/component/admin/tmpl/record/edit.php';
 
-foreach ([$serviceFile, $providerFile, $infoFile, $protocolFile] as $file) {
+foreach ([$serviceFile, $providerFile, $infoFile, $protocolFile, $controllerFile, $viewFile, $templateFile] as $file) {
     if (!is_file($file)) {
         fwrite(STDERR, "Missing Protocol integration contract file: {$file}\n");
         exit(1);
@@ -19,7 +22,10 @@ $service = (string) file_get_contents($serviceFile);
 $provider = (string) file_get_contents($providerFile);
 $info = (string) file_get_contents($infoFile);
 $protocol = (string) file_get_contents($protocolFile);
-$runtime = $service . "\n" . $provider . "\n" . $info . "\n" . $protocol;
+$controller = (string) file_get_contents($controllerFile);
+$view = (string) file_get_contents($viewFile);
+$template = (string) file_get_contents($templateFile);
+$runtime = implode("\n", [$service, $provider, $info, $protocol, $controller, $view, $template]);
 
 $requiredServiceFragments = [
     "DOCUMENTS_COMPONENT = 'com_decarodocuments'",
@@ -32,11 +38,56 @@ $requiredServiceFragments = [
     '$this->assertProtocolPermission(\'core.edit\')',
     'authorise($action, self::PROTOCOL_COMPONENT)',
     "new EntityReference(self::DOCUMENTS_COMPONENT, 'document', \$documentId)",
+    '$this->assertRecordRelationsMutable($recordId)',
+    "if (\$status !== 'draft')",
 ];
 
 foreach ($requiredServiceFragments as $fragment) {
     if (!str_contains($service, $fragment)) {
         fwrite(STDERR, "Missing Documents integration contract fragment: {$fragment}\n");
+        exit(1);
+    }
+}
+
+$requiredControllerFragments = [
+    "Session::checkToken('post')",
+    'attachDocumentToRecord($documentId, $recordId)',
+    'detachDocumentFromRecord($documentId, $recordId)',
+    "getInt('record_id')",
+    "getInt('document_id')",
+];
+
+foreach ($requiredControllerFragments as $fragment) {
+    if (!str_contains($controller, $fragment)) {
+        fwrite(STDERR, "Missing Protocol Documents controller guard: {$fragment}\n");
+        exit(1);
+    }
+}
+
+$requiredViewFragments = [
+    'findDocumentsForRecord((int) $this->item->id)',
+    "authorise('core.manage', DocumentsIntegrationService::DOCUMENTS_COMPONENT)",
+    "authorise('core.edit', DocumentsIntegrationService::DOCUMENTS_COMPONENT)",
+];
+
+foreach ($requiredViewFragments as $fragment) {
+    if (!str_contains($view, $fragment)) {
+        fwrite(STDERR, "Missing Protocol Documents view contract: {$fragment}\n");
+        exit(1);
+    }
+}
+
+$requiredTemplateFragments = [
+    'task=record.attachDocument',
+    'task=record.detachDocument',
+    'task=document.download',
+    "HTMLHelper::_('form.token')",
+    'COM_DECAROPROTOCOL_DOCUMENTS_IMMUTABLE',
+];
+
+foreach ($requiredTemplateFragments as $fragment) {
+    if (!str_contains($template, $fragment)) {
+        fwrite(STDERR, "Missing Protocol Documents UI contract: {$fragment}\n");
         exit(1);
     }
 }
@@ -66,4 +117,4 @@ if (str_contains($runtime, 'Xdecaro\\Core')) {
     exit(1);
 }
 
-fwrite(STDOUT, "Protocol/Documents integration contract OK\n");
+fwrite(STDOUT, "Protocol/Documents functional integration contract OK\n");
