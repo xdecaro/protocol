@@ -30,7 +30,7 @@ jobs:
             echo "Release v${VERSION} already exists"
             exit 1
           fi
-      - name: Validate release metadata Core and Documents boundaries
+      - name: Validate release metadata Core Documents and SQL boundaries
         shell: bash
         run: |
           set -euo pipefail
@@ -40,6 +40,12 @@ jobs:
           done < <(find component package updates -type f -name '*.xml' -print0)
           php -r '$c=simplexml_load_file("component/decaroprotocol.xml"); $p=simplexml_load_file("package/pkg_decaroprotocol.xml"); $u=simplexml_load_file("updates/pkg_decaroprotocol.xml"); if (trim((string)$c->version) !== $argv[1] || trim((string)$p->version) !== $argv[1] || trim((string)$u->update->version) !== $argv[1]) { exit(1); }' "$VERSION"
           test -f "component/admin/sql/updates/mysql/${VERSION}.sql"
+          grep -F 'charset="utf8"' component/decaroprotocol.xml
+          ! grep -F 'charset="utf8mb4"' component/decaroprotocol.xml
+          for table in registers register_counters records audit; do
+            grep -F "CREATE TABLE IF NOT EXISTS \`#__decaroprotocol_${table}\`" "component/admin/sql/updates/mysql/${VERSION}.sql"
+          done
+          ! grep -RniE 'DROP[[:space:]]+TABLE|TRUNCATE[[:space:]]+TABLE' component/admin/sql/updates/mysql
           test -f component/admin/src/Service/DocumentsIntegrationService.php
           grep -F 'xdecaro\Core' component/admin/src/Service/CoreIntegrationService.php
           grep -F 'xdecaro\Core' component/admin/src/Service/DocumentsIntegrationService.php
@@ -57,7 +63,9 @@ jobs:
           php tools/build.php
           diff -u /tmp/protocol-sums dist/SHA256SUMS.txt
           for file in dist/*.zip; do unzip -t "$file" >/dev/null; done
+          unzip -p "dist/com_decaroprotocol_${VERSION}.zip" decaroprotocol.xml | grep -F 'charset="utf8"'
           unzip -l "dist/com_decaroprotocol_${VERSION}.zip" | grep -F 'admin/src/Service/DocumentsIntegrationService.php'
+          unzip -l "dist/com_decaroprotocol_${VERSION}.zip" | grep -F "admin/sql/updates/mysql/${VERSION}.sql"
       - name: Publish release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -67,7 +75,7 @@ jobs:
             "dist/pkg_decaroprotocol_${VERSION}.zip" \
             "dist/SHA256SUMS.txt" \
             --title "Protocol by xdecaro ${VERSION}" \
-            --notes "Protocol ${VERSION} adds the optional provider-owned Documents 1.2.0+ relation integration through Core EntityReference/RelationReference. Protocol keeps ownership of records, numbering and ACL; Documents keeps ownership of storage, document ACL and relation persistence. No direct Documents-table access is introduced."
+            --notes "Protocol ${VERSION} adds optional provider-owned Documents 1.2.1+ relation integration through Core EntityReference/RelationReference and repairs Protocol SQL installation compatibility non-destructively. Protocol keeps ownership of records, numbering and ACL; Documents keeps storage, document ACL and relation persistence ownership."
       - name: Publish package checksum
         shell: bash
         run: |
