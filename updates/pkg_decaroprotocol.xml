@@ -9,7 +9,7 @@
     <client>site</client>
     <infourl title="Protocol by xdecaro">https://github.com/xdecaro/protocol</infourl>
     <downloads><downloadurl type="full" format="zip">https://github.com/xdecaro/protocol/releases/download/v1.5.0/pkg_decaroprotocol_1.5.0.zip</downloadurl></downloads>
-    <sha256>PENDING_RELEASE_SHA256</sha256>
+    <sha256>9104b4f6206cc6257f9c53dc881a39ae36d0e40f81662fb380ded2259d7b956e</sha256>
     <targetplatform name="joomla" version="(4|5|6)\.[0-9]+" />
     <php_minimum>8.1.0</php_minimum>
   </update>
