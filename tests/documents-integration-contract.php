@@ -25,11 +25,11 @@ $requiredServiceFragments = [
     "DOCUMENTS_COMPONENT = 'com_decarodocuments'",
     "PROTOCOL_ENTITY = 'record'",
     "DEFAULT_RELATION_TYPE = 'attachment'",
-    "bootComponent(self::DOCUMENTS_COMPONENT)",
-    "getRelationService",
+    'bootComponent(self::DOCUMENTS_COMPONENT)',
+    'getRelationService',
     "authorise('core.manage', 'com_decaroprotocol')",
     "authorise('core.edit', 'com_decaroprotocol')",
-    "new EntityReference(self::DOCUMENTS_COMPONENT, 'document', $documentId)",
+    "new EntityReference(self::DOCUMENTS_COMPONENT, 'document', \$documentId)",
 ];
 
 foreach ($requiredServiceFragments as $fragment) {
