@@ -8,6 +8,7 @@ use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\Controller\FormController;
 use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
+use Xdecaro\Component\Decaroprotocol\Administrator\Service\DocumentsIntegrationService;
 use Xdecaro\Component\Decaroprotocol\Administrator\Service\ProtocolService;
 
 class RecordController extends FormController
@@ -64,5 +65,57 @@ class RecordController extends FormController
             $this->setRedirect(Route::_('index.php?option=com_decaroprotocol&view=record&layout=edit&id=' . $id, false), $e->getMessage(), 'error');
             return false;
         }
+    }
+
+    public function attachDocument(): bool
+    {
+        return $this->changeDocumentRelation(true);
+    }
+
+    public function detachDocument(): bool
+    {
+        return $this->changeDocumentRelation(false);
+    }
+
+    private function changeDocumentRelation(bool $attach): bool
+    {
+        if (!Session::checkToken('post')) {
+            throw new \RuntimeException(Text::_('JINVALID_TOKEN'));
+        }
+
+        $recordId = $this->input->post->getInt('record_id');
+        $documentId = $this->input->post->getInt('document_id');
+
+        if ($recordId < 1) {
+            $this->setRedirect(
+                Route::_('index.php?option=com_decaroprotocol&view=records', false),
+                Text::_('COM_DECAROPROTOCOL_ERROR_RECORD_ID'),
+                'error'
+            );
+            return false;
+        }
+
+        try {
+            $service = Factory::getContainer()->get(DocumentsIntegrationService::class);
+
+            if ($attach) {
+                $service->attachDocumentToRecord($documentId, $recordId);
+                $message = Text::_('COM_DECAROPROTOCOL_DOCUMENTS_ATTACHED');
+            } else {
+                $service->detachDocumentFromRecord($documentId, $recordId);
+                $message = Text::_('COM_DECAROPROTOCOL_DOCUMENTS_DETACHED');
+            }
+
+            $this->setRedirect($this->recordEditUrl($recordId), $message);
+            return true;
+        } catch (\Throwable $exception) {
+            $this->setRedirect($this->recordEditUrl($recordId), $exception->getMessage(), 'error');
+            return false;
+        }
+    }
+
+    private function recordEditUrl(int $recordId): string
+    {
+        return Route::_('index.php?option=com_decaroprotocol&view=record&layout=edit&id=' . $recordId, false);
     }
 }
