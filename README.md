@@ -7,7 +7,7 @@ Protocol by xdecaro è il componente Joomla per registrazione amministrativa, nu
 - Componente: `com_decaroprotocol`
 - Pacchetto: `pkg_decaroprotocol`
 - Repository: `xdecaro/Protocol`
-- Versione corrente: `1.3.0`
+- Versione corrente: `1.4.0`
 - Obiettivo: Joomla 4, 5 e 6 quando tecnicamente possibile
 
 ## Confini
@@ -33,19 +33,21 @@ Il namespace deprecato `Xdecaro\Core` non viene consumato dal runtime Protocol. 
 
 ## Documents
 
-Dalla versione 1.3.0 Protocol può collegare opzionalmente documenti gestiti da Documents `1.2.1+` ai propri record di protocollo. La 1.2.1 è il minimo operativo perché include la correzione Joomla del manifest SQL e la repair non distruttiva delle installazioni 1.2.0 interessate.
+Dalla versione 1.3.0 Protocol dispone del contratto opzionale per collegare documenti gestiti da Documents `1.2.1+` ai propri record. Dalla versione 1.4.0 questo contratto è utilizzabile direttamente nella scheda Protocol: una bozza già salvata può collegare o scollegare documenti esistenti, mentre un protocollo definitivo mostra e scarica gli allegati in sola lettura.
 
 Il contratto è intenzionalmente stretto:
 
 - l'entità pubblica Protocol è `record`;
 - il documento resta proprietà di `com_decarodocuments` con entità `document`;
 - il tipo relazione predefinito è `attachment`;
-- Protocol verifica ACL e presenza del proprio record;
+- Protocol verifica ACL, token Joomla per le modifiche e stato del proprio record;
 - Documents verifica ACL documentali, presenza del documento e persistenza della relazione;
 - Protocol ottiene il servizio tramite `bootComponent('com_decarodocuments')->getRelationService()`;
-- Protocol non legge né scrive direttamente tabelle `#__decarodocuments_*` e non accede ai percorsi storage privati.
+- il download continua a passare dal controller protetto di Documents;
+- Protocol non legge né scrive direttamente tabelle `#__decarodocuments_*` e non accede ai percorsi storage privati;
+- dopo la protocollazione attach e detach vengono rifiutati anche lato server; eventuali correzioni devono usare un futuro flusso di rettifica tracciato.
 
-Se Core o Documents non sono disponibili, l'integrazione documentale risulta non disponibile senza compromettere numerazione, registri, record o audit Protocol.
+Documents `1.2.1+` resta il minimo del contratto pubblico; i test runtime della linea Protocol 1.4.0 usano la release riparata Documents 1.2.2. Se Core o Documents non sono disponibili, l'integrazione documentale risulta non disponibile senza compromettere numerazione, registri, record o audit Protocol.
 
 ## Nucleo
 
@@ -60,7 +62,7 @@ La base corrente comprende:
 7. dashboard e ricerca amministrativa di base;
 8. pagina Informazioni e diagnostica;
 9. integrazione opzionale Core;
-10. integrazione opzionale Documents tramite API pubblica;
+10. integrazione opzionale Documents tramite API pubblica e pannello allegati;
 11. build ZIP del componente e del package.
 
 Un numero assegnato non viene mai riutilizzato. Un protocollo protocollato non torna bozza tramite normale modifica.

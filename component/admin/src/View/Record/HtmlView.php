@@ -8,11 +8,16 @@ use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\View\HtmlView as BaseHtmlView;
 use Joomla\CMS\Toolbar\ToolbarHelper;
 use Xdecaro\Component\Decaroprotocol\Administrator\Service\CoreIntegrationService;
+use Xdecaro\Component\Decaroprotocol\Administrator\Service\DocumentsIntegrationService;
 
 class HtmlView extends BaseHtmlView
 {
     public $form;
     public $item;
+    public array $documents = [];
+    public bool $documentsIntegrationAvailable = false;
+    public bool $documentsAccessible = false;
+    public bool $canManageDocuments = false;
 
     public function display($tpl = null)
     {
@@ -31,6 +36,8 @@ class HtmlView extends BaseHtmlView
             }
         }
 
+        $this->prepareDocuments($isDraft);
+
         $wa = Factory::getApplication()->getDocument()->getWebAssetManager();
         try {
             Factory::getContainer()->get(CoreIntegrationService::class)->enableUi($wa);
@@ -41,6 +48,41 @@ class HtmlView extends BaseHtmlView
 
         $this->addToolbar($isDraft);
         parent::display($tpl);
+    }
+
+    private function prepareDocuments(bool $isDraft): void
+    {
+        if (empty($this->item->id)) {
+            return;
+        }
+
+        $user = Factory::getApplication()->getIdentity();
+
+        try {
+            $service = Factory::getContainer()->get(DocumentsIntegrationService::class);
+            $this->documentsIntegrationAvailable = $service->isAvailable();
+
+            if (!$this->documentsIntegrationAvailable) {
+                return;
+            }
+
+            $this->documentsAccessible = $user->authorise('core.manage', DocumentsIntegrationService::PROTOCOL_COMPONENT)
+                && $user->authorise('core.manage', DocumentsIntegrationService::DOCUMENTS_COMPONENT);
+
+            if (!$this->documentsAccessible) {
+                return;
+            }
+
+            $this->documents = $service->findDocumentsForRecord((int) $this->item->id);
+            $this->canManageDocuments = $isDraft
+                && $user->authorise('core.edit', DocumentsIntegrationService::PROTOCOL_COMPONENT)
+                && $user->authorise('core.edit', DocumentsIntegrationService::DOCUMENTS_COMPONENT);
+        } catch (\Throwable) {
+            $this->documentsIntegrationAvailable = false;
+            $this->documentsAccessible = false;
+            $this->canManageDocuments = false;
+            $this->documents = [];
+        }
     }
 
     protected function addToolbar($isDraft)
