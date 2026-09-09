@@ -21,6 +21,7 @@ use xdecaro\Core\Integration\RelationReference;
 final class DocumentsIntegrationService
 {
     public const DOCUMENTS_COMPONENT = 'com_decarodocuments';
+    public const MINIMUM_DOCUMENTS_VERSION = '1.2.1';
     public const PROTOCOL_COMPONENT = 'com_decaroprotocol';
     public const PROTOCOL_ENTITY = 'record';
     public const DEFAULT_RELATION_TYPE = 'attachment';
@@ -115,6 +116,8 @@ final class DocumentsIntegrationService
             );
         }
 
+        $this->assertDocumentsVersionCompatible();
+
         try {
             $application = Factory::getApplication();
 
@@ -125,7 +128,7 @@ final class DocumentsIntegrationService
             $component = $application->bootComponent(self::DOCUMENTS_COMPONENT);
 
             if (!is_object($component) || !method_exists($component, 'getRelationService')) {
-                throw new RuntimeException('Documents 1.2.0+ public relation API is not available.');
+                throw new RuntimeException('Documents 1.2.1+ public relation API is not available.');
             }
 
             $service = $component->getRelationService();
@@ -135,7 +138,7 @@ final class DocumentsIntegrationService
                 || !method_exists($service, 'detach')
                 || !method_exists($service, 'findDocuments')
             ) {
-                throw new RuntimeException('Documents 1.2.0+ public relation API is incomplete.');
+                throw new RuntimeException('Documents 1.2.1+ public relation API is incomplete.');
             }
 
             return $service;
@@ -143,10 +146,38 @@ final class DocumentsIntegrationService
             throw $exception;
         } catch (Throwable $exception) {
             throw new RuntimeException(
-                'Documents 1.2.0+ is unavailable or could not be booted.',
+                'Documents 1.2.1+ is unavailable or could not be booted.',
                 0,
                 $exception
             );
+        }
+    }
+
+    private function assertDocumentsVersionCompatible(): void
+    {
+        $type = 'component';
+        $element = self::DOCUMENTS_COMPONENT;
+        $query = $this->db->getQuery(true)
+            ->select([
+                $this->db->quoteName('manifest_cache'),
+                $this->db->quoteName('enabled'),
+            ])
+            ->from($this->db->quoteName('#__extensions'))
+            ->where($this->db->quoteName('type') . ' = :type')
+            ->where($this->db->quoteName('element') . ' = :element')
+            ->bind(':type', $type)
+            ->bind(':element', $element);
+
+        $extension = $this->db->setQuery($query, 0, 1)->loadObject();
+        if (!$extension || (int) ($extension->enabled ?? 0) !== 1) {
+            throw new RuntimeException('Documents 1.2.1+ is not installed and enabled.');
+        }
+
+        $manifest = json_decode((string) ($extension->manifest_cache ?? ''), true);
+        $version = is_array($manifest) ? trim((string) ($manifest['version'] ?? '')) : '';
+
+        if ($version === '' || version_compare($version, self::MINIMUM_DOCUMENTS_VERSION, '<')) {
+            throw new RuntimeException('Documents 1.2.1+ is required for Protocol document integration.');
         }
     }
 
