@@ -55,6 +55,8 @@ jobs:
           ! grep -RInF 'com_decarodcl' component
           grep -F 'bootComponent(self::DOCUMENTS_COMPONENT)' component/admin/src/Service/DocumentsIntegrationService.php
           grep -F 'getRelationService' component/admin/src/Service/DocumentsIntegrationService.php
+          grep -F 'assertRecordRelationsMutable' component/admin/src/Service/DocumentsIntegrationService.php
+          grep -F "Session::checkToken('post')" component/admin/src/Controller/RecordController.php
           php tests/documents-integration-contract.php
       - name: Build deterministic packages
         run: |
@@ -75,7 +77,7 @@ jobs:
             "dist/pkg_decaroprotocol_${VERSION}.zip" \
             "dist/SHA256SUMS.txt" \
             --title "Protocol by xdecaro ${VERSION}" \
-            --notes "Protocol ${VERSION} adds optional provider-owned Documents 1.2.1+ relation integration through Core EntityReference/RelationReference and repairs Protocol SQL installation compatibility non-destructively. Protocol keeps ownership of records, numbering and ACL; Documents keeps storage, document ACL and relation persistence ownership."
+            --notes "Protocol ${VERSION} exposes the existing provider-owned Documents relation contract in the Protocol record editor. Saved drafts can link or unlink existing Documents records; definitive protocols keep their linked attachments readable/downloadable but reject relation changes server-side. Write tasks require Joomla CSRF validation, Protocol keeps record ACL/state ownership, Documents keeps document ACL/storage/relation persistence, and no private Documents tables are consumed by Protocol."
       - name: Publish package checksum
         shell: bash
         run: |
