@@ -1,7 +1,7 @@
 {
   "$schema": "https://developer.joomla.org/schemas/json-schema/web_assets.json",
   "name": "com_decaroprotocol",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Protocol by xdecaro administrator assets",
   "license": "GPL-2.0-or-later",
   "assets": [
@@ -9,13 +9,13 @@
       "name": "com_decaroprotocol.admin",
       "type": "style",
       "uri": "com_decaroprotocol/css/admin.css",
-      "version": "1.4.0"
+      "version": "1.5.0"
     },
     {
       "name": "com_decaroprotocol.information",
       "type": "style",
       "uri": "com_decaroprotocol/css/information.css",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "dependencies": ["com_decaroprotocol.admin"]
     }
   ]
