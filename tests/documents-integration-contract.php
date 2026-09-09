@@ -23,12 +23,14 @@ $runtime = $service . "\n" . $provider . "\n" . $info . "\n" . $protocol;
 
 $requiredServiceFragments = [
     "DOCUMENTS_COMPONENT = 'com_decarodocuments'",
+    "PROTOCOL_COMPONENT = 'com_decaroprotocol'",
     "PROTOCOL_ENTITY = 'record'",
     "DEFAULT_RELATION_TYPE = 'attachment'",
     'bootComponent(self::DOCUMENTS_COMPONENT)',
     'getRelationService',
-    "authorise('core.manage', 'com_decaroprotocol')",
-    "authorise('core.edit', 'com_decaroprotocol')",
+    '$this->assertProtocolPermission(\'core.manage\')',
+    '$this->assertProtocolPermission(\'core.edit\')',
+    'authorise($action, self::PROTOCOL_COMPONENT)',
     "new EntityReference(self::DOCUMENTS_COMPONENT, 'document', \$documentId)",
 ];
 
