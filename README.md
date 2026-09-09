@@ -7,7 +7,7 @@ Protocol by xdecaro è il componente Joomla per registrazione amministrativa, nu
 - Componente: `com_decaroprotocol`
 - Pacchetto: `pkg_decaroprotocol`
 - Repository: `xdecaro/Protocol`
-- Versione corrente: `1.2.0`
+- Versione corrente: `1.3.0`
 - Obiettivo: Joomla 4, 5 e 6 quando tecnicamente possibile
 
 ## Confini
@@ -31,6 +31,22 @@ Core non è una dipendenza obbligatoria: se manca, è precedente a `1.3.0` o non
 
 Il namespace deprecato `Xdecaro\Core` non viene consumato dal runtime Protocol. La logica di numerazione, registri, protocolli e audit resta esclusivamente in Protocol.
 
+## Documents
+
+Dalla versione 1.3.0 Protocol può collegare opzionalmente documenti gestiti da Documents `1.2.0+` ai propri record di protocollo.
+
+Il contratto è intenzionalmente stretto:
+
+- l'entità pubblica Protocol è `record`;
+- il documento resta proprietà di `com_decarodocuments` con entità `document`;
+- il tipo relazione predefinito è `attachment`;
+- Protocol verifica ACL e presenza del proprio record;
+- Documents verifica ACL documentali, presenza del documento e persistenza della relazione;
+- Protocol ottiene il servizio tramite `bootComponent('com_decarodocuments')->getRelationService()`;
+- Protocol non legge né scrive direttamente tabelle `#__decarodocuments_*` e non accede ai percorsi storage privati.
+
+Se Core o Documents non sono disponibili, l'integrazione documentale risulta non disponibile senza compromettere numerazione, registri, record o audit Protocol.
+
 ## Nucleo
 
 La base corrente comprende:
@@ -44,6 +60,7 @@ La base corrente comprende:
 7. dashboard e ricerca amministrativa di base;
 8. pagina Informazioni e diagnostica;
 9. integrazione opzionale Core;
-10. build ZIP del componente e del package.
+10. integrazione opzionale Documents tramite API pubblica;
+11. build ZIP del componente e del package.
 
 Un numero assegnato non viene mai riutilizzato. Un protocollo protocollato non torna bozza tramite normale modifica.
