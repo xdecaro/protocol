@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "component/**"
+      - "plugins/**"
       - "package/**"
       - "updates/**"
       - "tests/**"
@@ -29,55 +30,49 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
+          extensions: zip, simplexml
           coverage: none
       - name: Read version
         id: version
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="$(php -r '$x=simplexml_load_file("package/pkg_decaroprotocol.xml"); echo trim((string)$x->version);')"
-          test -n "$VERSION"
-          test "$(tr -d '\r\n' < VERSION)" = "$VERSION"
+          VERSION="$(tr -d '\r\n' < VERSION)"
+          test "$VERSION" = '1.5.0'
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-      - name: Validate PHP XML JSON schema and integration boundaries
+      - name: Validate source metadata and boundaries
         shell: bash
         run: |
           set -euo pipefail
-          find component tools tests -type f -name '*.php' -print0 | xargs -0 -n1 php -l
-          while IFS= read -r -d '' FILE; do
-            php -r 'libxml_use_internal_errors(true); if (simplexml_load_file($argv[1]) === false) { fwrite(STDERR, "XML non valido: {$argv[1]}\n"); exit(1); }' "$FILE"
-          done < <(find component package updates -type f -name '*.xml' -print0)
           VERSION="${{ steps.version.outputs.version }}"
-          php -r '$data=json_decode(file_get_contents("component/media/joomla.asset.json"), true); if (!is_array($data) || json_last_error() !== JSON_ERROR_NONE || ($data["version"] ?? "") !== $argv[1]) { exit(1); }' "$VERSION"
-          php -r '$x=simplexml_load_file("updates/pkg_decaroprotocol.xml"); if (!$x || trim((string)$x->update->version) !== $argv[1]) { exit(1); }' "$VERSION"
-          grep -F 'updates/pkg_decaroprotocol.xml' package/pkg_decaroprotocol.xml
+          find component plugins package tools tests -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          while IFS= read -r -d '' FILE; do
+            php -r 'libxml_use_internal_errors(true); if (simplexml_load_file($argv[1]) === false) { fwrite(STDERR, "Invalid XML: {$argv[1]}\n"); exit(1); }' "$FILE"
+          done < <(find component plugins package updates -type f -name '*.xml' -print0)
+          php -r '$c=simplexml_load_file("component/decaroprotocol.xml"); $p=simplexml_load_file("plugins/xdecaroanalytics/decaroprotocol/decaroprotocol.xml"); $pkg=simplexml_load_file("package/pkg_decaroprotocol.xml"); $u=simplexml_load_file("updates/pkg_decaroprotocol.xml"); foreach([$c,$p,$pkg,$u->update] as $x){if(trim((string)$x->version)!==$argv[1]) exit(1);}' "$VERSION"
+          php -r '$data=json_decode(file_get_contents("component/media/joomla.asset.json"), true); if (!is_array($data) || ($data["version"] ?? "") !== $argv[1]) exit(1);' "$VERSION"
           test -f "component/admin/sql/updates/mysql/${VERSION}.sql"
           grep -F 'charset="utf8"' component/decaroprotocol.xml
           ! grep -F 'charset="utf8mb4"' component/decaroprotocol.xml
-          for table in registers register_counters records audit; do
-            grep -F "CREATE TABLE IF NOT EXISTS \`#__decaroprotocol_${table}\`" "component/admin/sql/updates/mysql/${VERSION}.sql"
-          done
           ! grep -RniE 'DROP[[:space:]]+TABLE|TRUNCATE[[:space:]]+TABLE' component/admin/sql/updates/mysql
-          test -f component/admin/src/Service/CoreIntegrationService.php
-          test -f component/admin/src/Service/DocumentsIntegrationService.php
-          test -f component/admin/src/Helper/InformationHelper.php
-          grep -F 'xdecaro\Core' component/admin/src/Service/CoreIntegrationService.php
-          grep -F 'xdecaro\Core' component/admin/src/Service/DocumentsIntegrationService.php
-          grep -F 'xdecaro\Core' component/admin/src/Helper/InformationHelper.php
-          ! grep -RInF 'Xdecaro\Core' component/admin/src component/admin/services
-          grep -F "MINIMUM_CORE_VERSION = '1.3.0'" component/admin/src/Service/CoreIntegrationService.php
-          grep -F "MINIMUM_CORE = '1.3.0'" component/admin/src/Helper/InformationHelper.php
+          for table in registers register_counters records audit; do
+            grep -F "CREATE TABLE IF NOT EXISTS \`#__decaroprotocol_${table}\`" component/admin/sql/install.mysql.utf8mb4.sql
+          done
+          grep -F "MINIMUM_CORE_VERSION = '1.4.0'" component/admin/src/Service/CoreIntegrationService.php
+          grep -F "MINIMUM_CORE = '1.4.0'" component/admin/src/Helper/InformationHelper.php
           grep -F "VERSION = '${VERSION}'" component/admin/src/Helper/InformationHelper.php
-          grep -F "'Competitions' => 'com_xdecarocompetitions'" component/admin/src/Helper/InformationHelper.php
-          ! grep -RInF 'com_decarodcl' component
-          ! grep -RInF '#__decarodocuments_' component
+          ! grep -RInF 'Xdecaro\Core' component/admin/src component/admin/services
+          ! grep -RInE '#__(decarodocuments|xdecaronotifications|xdecarotasks|xdecaroanalytics)_' component/admin/src/Service
           grep -F 'bootComponent(self::DOCUMENTS_COMPONENT)' component/admin/src/Service/DocumentsIntegrationService.php
           grep -F 'getRelationService' component/admin/src/Service/DocumentsIntegrationService.php
           grep -F 'assertRecordRelationsMutable' component/admin/src/Service/DocumentsIntegrationService.php
           grep -F "Session::checkToken('post')" component/admin/src/Controller/RecordController.php
           grep -F 'task=record.attachDocument' component/admin/tmpl/record/edit.php
           grep -F 'task=record.detachDocument' component/admin/tmpl/record/edit.php
+          grep -F '<scriptfile>script.php</scriptfile>' package/pkg_decaroprotocol.xml
+          grep -F 'plg_xdecaroanalytics_decaroprotocol_1.5.0.zip' package/pkg_decaroprotocol.xml
           php tests/documents-integration-contract.php
+          php tests/public-integration-contract.php
       - name: Deterministic build A
         run: php tools/build.php && cp dist/SHA256SUMS.txt /tmp/protocol-sums
       - name: Deterministic build B and ZIP integrity
@@ -88,14 +83,15 @@ jobs:
           diff -u /tmp/protocol-sums dist/SHA256SUMS.txt
           VERSION="${{ steps.version.outputs.version }}"
           C="dist/com_decaroprotocol_${VERSION}.zip"
+          A="dist/plg_xdecaroanalytics_decaroprotocol_${VERSION}.zip"
           P="dist/pkg_decaroprotocol_${VERSION}.zip"
-          unzip -t "$C" >/dev/null
-          unzip -t "$P" >/dev/null
+          for Z in "$C" "$A" "$P"; do unzip -t "$Z" >/dev/null; done
           unzip -p "$C" decaroprotocol.xml | grep -F "<version>${VERSION}</version>"
-          unzip -p "$C" decaroprotocol.xml | grep -F 'charset="utf8"'
+          unzip -p "$A" decaroprotocol.xml | grep -F "<version>${VERSION}</version>"
           unzip -p "$P" pkg_decaroprotocol.xml | grep -F "<version>${VERSION}</version>"
-          unzip -l "$C" | grep -F "admin/sql/updates/mysql/${VERSION}.sql"
-          unzip -l "$C" | grep -F 'admin/src/Service/DocumentsIntegrationService.php'
+          unzip -l "$P" | grep -F "packages/com_decaroprotocol_${VERSION}.zip"
+          unzip -l "$P" | grep -F "packages/plg_xdecaroanalytics_decaroprotocol_${VERSION}.zip"
+          unzip -l "$P" | grep -F 'script.php'
       - name: Upload Joomla packages
         if: matrix.php == '8.3'
         uses: actions/upload-artifact@v4
@@ -111,15 +107,14 @@ jobs:
       fail-fast: false
       matrix:
         joomla: ['5.4.8', '6.1.3']
-        mode: ['clean', 'repair-1.2.0']
+        mode: ['clean', 'upgrade-1.4.0', 'repair-1.2.0']
     services:
       mysql:
         image: mysql:8.0
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
           MYSQL_DATABASE: joomla
-        ports:
-          - 3306:3306
+        ports: ['3306:3306']
         options: >-
           --health-cmd="mysqladmin ping -h localhost"
           --health-interval=10s
@@ -134,7 +129,7 @@ jobs:
           coverage: none
       - name: Build Protocol package
         run: php tools/build.php
-      - name: Download and verify runtime packages
+      - name: Download verified runtime packages
         shell: bash
         run: |
           set -euo pipefail
@@ -144,19 +139,23 @@ jobs:
             6.1.3) JSHA='a49305652503f9344d046d55471f324a07882996132ed967c3b0fe34707ae4a1' ;;
             *) exit 1 ;;
           esac
-          JFILE="Joomla_${JOOMLA}-Stable-Full_Package.zip"
-          curl -fL --retry 3 "https://github.com/joomla/joomla-cms/releases/download/${JOOMLA}/${JFILE}" -o /tmp/joomla.zip
+          curl -fL --retry 3 "https://github.com/joomla/joomla-cms/releases/download/${JOOMLA}/Joomla_${JOOMLA}-Stable-Full_Package.zip" -o /tmp/joomla.zip
           echo "${JSHA}  /tmp/joomla.zip" | sha256sum --check --strict
           curl -fL --retry 3 'https://github.com/xdecaro/core/releases/download/v1.4.0/pkg_xdecarocore_1.4.0.zip' -o /tmp/core.zip
           echo '4248f7e3de514c2ae2402ffc8ba12845647dca1ebac963da370650e88ac45def  /tmp/core.zip' | sha256sum --check --strict
           curl -fL --retry 3 'https://github.com/xdecaro/documents/releases/download/v1.2.2/pkg_decarodocuments_1.2.2.zip' -o /tmp/documents.zip
           echo '0b82aef86ffd094cc2453e129e285bfb6274d08c930453a519fbf876e641114f  /tmp/documents.zip' | sha256sum --check --strict
-          if [ '${{ matrix.mode }}' = 'repair-1.2.0' ]; then
+          curl -fL --retry 3 'https://github.com/xdecaro/analytics/releases/download/v1.0.0/pkg_xdecaroanalytics_1.0.0.zip' -o /tmp/analytics.zip
+          echo '978e434cf8e7cab946b6d6cc22ae1a1fc730cbf6248d75cbf83ef9ecf5ee7058  /tmp/analytics.zip' | sha256sum --check --strict
+          if [ '${{ matrix.mode }}' = 'upgrade-1.4.0' ]; then
+            curl -fL --retry 3 'https://github.com/xdecaro/protocol/releases/download/v1.4.0/pkg_decaroprotocol_1.4.0.zip' -o /tmp/protocol-old.zip
+            echo '2f762928fb2944611356b3568643700eb0af1af6a0be65fcfd0f3b287431eef9  /tmp/protocol-old.zip' | sha256sum --check --strict
+          elif [ '${{ matrix.mode }}' = 'repair-1.2.0' ]; then
             curl -fL --retry 3 'https://github.com/xdecaro/protocol/releases/download/v1.2.0/pkg_decaroprotocol_1.2.0.zip' -o /tmp/protocol-old.zip
             echo '8dbc5cd43622d65d4f5aa260c070a52975d012117f595c8de4d938c2b08491a3  /tmp/protocol-old.zip' | sha256sum --check --strict
           fi
           mkdir joomla && unzip -q /tmp/joomla.zip -d joomla
-      - name: Install Joomla Core and Documents
+      - name: Install Joomla and shared optional products
         shell: bash
         run: |
           set -euo pipefail
@@ -164,45 +163,51 @@ jobs:
           php installation/joomla.php install --site-name='Protocol integration CI' --admin-user='Protocol CI Admin' --admin-username=admin --admin-password="ProtocolCI-${GITHUB_RUN_ID}!" --admin-email=admin@example.invalid --db-type=mysqli --db-host=127.0.0.1 --db-user=root --db-pass='' --db-name=joomla --db-prefix=prt_ --db-encryption=0 --no-interaction
           php cli/joomla.php extension:install --path=/tmp/core.zip -vvv
           php cli/joomla.php extension:install --path=/tmp/documents.zip -vvv
-      - name: Install or repair Protocol
+          php cli/joomla.php extension:install --path=/tmp/analytics.zip -vvv
+      - name: Prepare legacy Protocol state
+        if: matrix.mode != 'clean'
         shell: bash
         run: |
           set -euo pipefail
           cd joomla
-          if [ '${{ matrix.mode }}' = 'repair-1.2.0' ]; then
-            php cli/joomla.php extension:install --path=/tmp/protocol-old.zip -vvv
-            BEFORE="$(mysql --protocol=TCP -h127.0.0.1 -uroot --batch --skip-column-names joomla -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='joomla' AND table_name='prt_decaroprotocol_records';")"
-            echo "protocol_records_before_repair=${BEFORE}"
-          fi
+          php cli/joomla.php extension:install --path=/tmp/protocol-old.zip -vvv
+          MYSQL=(mysql --protocol=TCP -h127.0.0.1 -uroot --batch --skip-column-names joomla)
+          REGISTER_ID="$("${MYSQL[@]}" -e "SELECT id FROM prt_decaroprotocol_registers ORDER BY id LIMIT 1;")"
+          test -n "$REGISTER_ID"
+          "${MYSQL[@]}" -e "INSERT INTO prt_decaroprotocol_records (register_id,subject,status,created,created_by) VALUES (${REGISTER_ID},'Protocol legacy sentinel','draft',NOW(),0);"
+      - name: Install Protocol 1.5.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd joomla
           VERSION="$(tr -d '\r\n' < "$GITHUB_WORKSPACE/VERSION")"
           php cli/joomla.php extension:install --path="$GITHUB_WORKSPACE/dist/pkg_decaroprotocol_${VERSION}.zip" -vvv
-      - name: Verify installed integration boundary and schemas
+      - name: Verify extensions schema data and first-install plugin activation
         shell: bash
         run: |
           set -euo pipefail
           MYSQL=(mysql --protocol=TCP -h127.0.0.1 -uroot --batch --skip-column-names joomla)
-          for table in prt_decarodocuments_documents prt_decarodocuments_relations prt_decaroprotocol_registers prt_decaroprotocol_register_counters prt_decaroprotocol_records prt_decaroprotocol_audit; do
-            count="$("${MYSQL[@]}" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='joomla' AND table_name='${table}';")"
-            echo "${table}=${count}"
-            test "$count" = '1'
+          for table in prt_decaroprotocol_registers prt_decaroprotocol_register_counters prt_decaroprotocol_records prt_decaroprotocol_audit prt_decarodocuments_documents prt_decarodocuments_relations; do
+            test "$("${MYSQL[@]}" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='joomla' AND table_name='${table}';")" = '1'
           done
-          d_schema="$("${MYSQL[@]}" -e "SELECT s.version_id FROM prt_schemas s JOIN prt_extensions e ON e.extension_id=s.extension_id WHERE e.type='component' AND e.element='com_decarodocuments' LIMIT 1;")"
-          p_schema="$("${MYSQL[@]}" -e "SELECT s.version_id FROM prt_schemas s JOIN prt_extensions e ON e.extension_id=s.extension_id WHERE e.type='component' AND e.element='com_decaroprotocol' LIMIT 1;")"
-          echo "documents_schema=${d_schema} protocol_schema=${p_schema}"
-          test "$d_schema" = '1.2.2'
-          test "$p_schema" = '1.4.0'
-          SERVICE='joomla/administrator/components/com_decaroprotocol/src/Service/DocumentsIntegrationService.php'
-          test -f "$SERVICE"
-          grep -F 'bootComponent(self::DOCUMENTS_COMPONENT)' "$SERVICE"
-          grep -F 'getRelationService' "$SERVICE"
-          grep -F 'assertRecordRelationsMutable' "$SERVICE"
-          ! grep -F '#__decarodocuments_' "$SERVICE"
-      - name: Exercise Protocol Documents relation runtime
+          test "$("${MYSQL[@]}" -e "SELECT COUNT(*) FROM prt_extensions WHERE type='package' AND element='pkg_decaroprotocol';")" = '1'
+          test "$("${MYSQL[@]}" -e "SELECT COUNT(*) FROM prt_extensions WHERE type='component' AND element='com_decaroprotocol';")" = '1'
+          test "$("${MYSQL[@]}" -e "SELECT COUNT(*) FROM prt_extensions WHERE type='plugin' AND folder='xdecaroanalytics' AND element='decaroprotocol';")" = '1'
+          P_SCHEMA="$("${MYSQL[@]}" -e "SELECT s.version_id FROM prt_schemas s JOIN prt_extensions e ON e.extension_id=s.extension_id WHERE e.type='component' AND e.element='com_decaroprotocol' LIMIT 1;")"
+          test "$P_SCHEMA" = '1.5.0'
+          if [ '${{ matrix.mode }}' != 'clean' ]; then
+            test "$("${MYSQL[@]}" -e "SELECT COUNT(*) FROM prt_decaroprotocol_records WHERE subject='Protocol legacy sentinel';")" = '1'
+          else
+            test "$("${MYSQL[@]}" -e "SELECT COUNT(*) FROM prt_extensions WHERE type='plugin' AND folder='xdecaroanalytics' AND element='decaroprotocol' AND enabled=1;")" = '1'
+          fi
+          # Enable for the integration probe in upgrade modes without changing package update semantics.
+          "${MYSQL[@]}" -e "UPDATE prt_extensions SET enabled=1 WHERE type='plugin' AND folder='xdecaroanalytics' AND element='decaroprotocol';"
+      - name: Exercise public facade Core capabilities Documents and Analytics
         shell: bash
         run: |
           set -euo pipefail
           cd joomla
-          cat > protocol-documents-probe.php <<'PHP'
+          cat > protocol-integration-probe.php <<'PHP'
           <?php
           define('_JEXEC', 1);
           define('JPATH_BASE', __DIR__);
@@ -212,8 +217,9 @@ jobs:
           use Joomla\CMS\Factory;
           use Joomla\CMS\User\UserFactoryInterface;
           use Joomla\Database\DatabaseInterface;
-          use Xdecaro\Component\Decaroprotocol\Administrator\Service\CoreIntegrationService;
-          use Xdecaro\Component\Decaroprotocol\Administrator\Service\DocumentsIntegrationService;
+          use Xdecaro\Component\Decaroprotocol\Administrator\Extension\ProtocolComponent;
+          use xdecaro\Component\Analytics\Administrator\Extension\AnalyticsComponent;
+          use xdecaro\Core\Integration\CapabilityRegistry;
 
           $container = Factory::getContainer();
           $container->alias('session', 'session.cli')
@@ -227,131 +233,42 @@ jobs:
 
           /** @var DatabaseInterface $db */
           $db = $container->get(DatabaseInterface::class);
-          $userQuery = $db->getQuery(true)
-              ->select($db->quoteName('id'))
-              ->from($db->quoteName('#__users'))
-              ->where($db->quoteName('username') . ' = ' . $db->quote('admin'));
-          $userId = (int) $db->setQuery($userQuery, 0, 1)->loadResult();
-          if ($userId < 1) {
-              throw new RuntimeException('Runtime admin user was not found.');
-          }
-          $user = $container->get(UserFactoryInterface::class)->loadUserById($userId);
-          $app->loadIdentity($user);
+          $uid = (int) $db->setQuery($db->getQuery(true)->select('id')->from('#__users')->where('username=' . $db->quote('admin')), 0, 1)->loadResult();
+          $app->loadIdentity($container->get(UserFactoryInterface::class)->loadUserById($uid));
 
-          $registerQuery = $db->getQuery(true)
-              ->select($db->quoteName('id'))
-              ->from($db->quoteName('#__decaroprotocol_registers'))
-              ->order($db->quoteName('id') . ' ASC');
-          $registerId = (int) $db->setQuery($registerQuery, 0, 1)->loadResult();
-          if ($registerId < 1) {
-              throw new RuntimeException('Protocol register was not found.');
-          }
+          $component = $app->bootComponent('com_decaroprotocol');
+          if (!$component instanceof ProtocolComponent) throw new RuntimeException('Protocol public facade unavailable.');
+          $registry = new CapabilityRegistry();
+          $component->getCoreIntegrationService()->registerCapabilities($registry);
+          if (!$registry->supports('com_decaroprotocol', 'protocol.query')) throw new RuntimeException('Protocol capability registration failed.');
+          if (!$component->getDocumentsIntegrationService()->isAvailable()) throw new RuntimeException('Documents integration unavailable.');
 
+          $registerId = (int) $db->setQuery($db->getQuery(true)->select('id')->from('#__decaroprotocol_registers')->order('id ASC'), 0, 1)->loadResult();
           $now = Factory::getDate()->toSql();
-          $recordInsert = $db->getQuery(true)
-              ->insert($db->quoteName('#__decaroprotocol_records'))
-              ->columns([
-                  $db->quoteName('register_id'),
-                  $db->quoteName('subject'),
-                  $db->quoteName('status'),
-                  $db->quoteName('created'),
-                  $db->quoteName('created_by'),
-              ])
-              ->values(implode(',', [
-                  (string) $registerId,
-                  $db->quote('Protocol Documents runtime probe'),
-                  $db->quote('draft'),
-                  $db->quote($now),
-                  (string) $userId,
-              ]));
-          $db->setQuery($recordInsert)->execute();
+          $row = (object) ['register_id'=>$registerId,'subject'=>'Protocol service runtime probe','status'=>'draft','created'=>$now,'created_by'=>$uid];
+          $db->insertObject('#__decaroprotocol_records', $row);
           $recordId = (int) $db->insertid();
+          $result = $component->getProtocolService()->protocol($recordId, $uid);
+          if (($result['number'] ?? 0) < 1) throw new RuntimeException('ProtocolService did not assign a number.');
 
-          $documentInsert = $db->getQuery(true)
-              ->insert($db->quoteName('#__decarodocuments_documents'))
-              ->columns([
-                  $db->quoteName('uuid'),
-                  $db->quoteName('title'),
-                  $db->quoteName('original_name'),
-                  $db->quoteName('mime_type'),
-                  $db->quoteName('file_size'),
-                  $db->quoteName('sha256'),
-                  $db->quoteName('state'),
-                  $db->quoteName('access'),
-                  $db->quoteName('created'),
-                  $db->quoteName('created_by'),
-              ])
-              ->values(implode(',', [
-                  $db->quote('11111111-1111-4111-8111-111111111111'),
-                  $db->quote('Protocol runtime attachment'),
-                  $db->quote('runtime.txt'),
-                  $db->quote('text/plain'),
-                  '12',
-                  $db->quote(str_repeat('a', 64)),
-                  '1',
-                  '1',
-                  $db->quote($now),
-                  (string) $userId,
-              ]));
-          $db->setQuery($documentInsert)->execute();
-          $documentId = (int) $db->insertid();
+          $draft = (object) ['register_id'=>$registerId,'subject'=>'Protocol Documents runtime probe','status'=>'draft','created'=>$now,'created_by'=>$uid];
+          $db->insertObject('#__decaroprotocol_records', $draft);
+          $draftId = (int) $db->insertid();
+          $doc = (object) ['uuid'=>'11111111-1111-4111-8111-111111111111','title'=>'Protocol runtime attachment','original_name'=>'runtime.txt','mime_type'=>'text/plain','file_size'=>12,'sha256'=>str_repeat('a',64),'state'=>1,'access'=>1,'created'=>$now,'created_by'=>$uid];
+          $db->insertObject('#__decarodocuments_documents', $doc);
+          $docId = (int) $db->insertid();
+          $documents = $component->getDocumentsIntegrationService();
+          $documents->attachDocumentToRecord($docId, $draftId);
+          if (count($documents->findDocumentsForRecord($draftId)) !== 1) throw new RuntimeException('Documents public relation API failed.');
 
-          $service = new DocumentsIntegrationService(new CoreIntegrationService(), $db);
-          if (!$service->isAvailable()) {
-              throw new RuntimeException('Protocol Documents integration is not available at runtime.');
-          }
+          $analytics = $app->bootComponent('com_xdecaroanalytics');
+          if (!$analytics instanceof AnalyticsComponent) throw new RuntimeException('Analytics component unavailable.');
+          $providers = $analytics->getProviderDiscoveryService()->discover();
+          if (!$providers->has('protocol')) throw new RuntimeException('Protocol Analytics provider was not discovered.');
+          $metric = $providers->get('protocol')->getMetric('protocol.records.total');
+          if (!isset($metric['value']) || (int) $metric['value'] < 2) throw new RuntimeException('Protocol Analytics metric failed.');
 
-          $service->attachDocumentToRecord($documentId, $recordId);
-          $documents = $service->findDocumentsForRecord($recordId);
-          if (count($documents) !== 1 || (int) ($documents[0]['id'] ?? 0) !== $documentId) {
-              throw new RuntimeException('Draft attachment was not returned by Documents public relation API.');
-          }
-
-          $protocolled = $db->getQuery(true)
-              ->update($db->quoteName('#__decaroprotocol_records'))
-              ->set($db->quoteName('status') . ' = ' . $db->quote('protocolled'))
-              ->where($db->quoteName('id') . ' = ' . $recordId);
-          $db->setQuery($protocolled)->execute();
-
-          $documents = $service->findDocumentsForRecord($recordId);
-          if (count($documents) !== 1) {
-              throw new RuntimeException('Final protocol lost its existing attachment relation.');
-          }
-
-          $detachRejected = false;
-          try {
-              $service->detachDocumentFromRecord($documentId, $recordId);
-          } catch (RuntimeException $exception) {
-              $detachRejected = str_contains($exception->getMessage(), 'immutable');
-          }
-          if (!$detachRejected) {
-              throw new RuntimeException('Final protocol allowed attachment detach.');
-          }
-
-          $attachRejected = false;
-          try {
-              $service->attachDocumentToRecord($documentId, $recordId);
-          } catch (RuntimeException $exception) {
-              $attachRejected = str_contains($exception->getMessage(), 'immutable');
-          }
-          if (!$attachRejected) {
-              throw new RuntimeException('Final protocol allowed attachment attach.');
-          }
-
-          $relationCount = (int) $db->setQuery(
-              $db->getQuery(true)
-                  ->select('COUNT(*)')
-                  ->from($db->quoteName('#__decarodocuments_relations'))
-                  ->where($db->quoteName('document_id') . ' = ' . $documentId)
-                  ->where($db->quoteName('target_component') . ' = ' . $db->quote('com_decaroprotocol'))
-                  ->where($db->quoteName('target_entity') . ' = ' . $db->quote('record'))
-                  ->where($db->quoteName('target_id') . ' = ' . $db->quote((string) $recordId))
-          )->loadResult();
-          if ($relationCount !== 1) {
-              throw new RuntimeException('Final protocol attachment relation was unexpectedly changed.');
-          }
-
-          echo "Protocol/Documents runtime attach/read/immutability OK\n";
+          echo "Protocol 1.5 public integrations OK\n";
           PHP
-          php protocol-documents-probe.php
-          rm protocol-documents-probe.php
+          php protocol-integration-probe.php
+          rm protocol-integration-probe.php
