@@ -10,7 +10,7 @@ use Throwable;
 
 final class InformationHelper
 {
-    public const VERSION = '1.3.0';
+    public const VERSION = '1.4.0';
     public const MINIMUM_JOOMLA = '4.4.0';
     public const MINIMUM_PHP = '8.1.0';
     public const MINIMUM_CORE = '1.3.0';
