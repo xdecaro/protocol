@@ -6,7 +6,7 @@
   <copyright>Copyright (C) 2026 Luca De Caro. All rights reserved.</copyright>
   <license>GNU General Public License version 2 or later</license>
   <authorUrl>https://github.com/xdecaro/Protocol</authorUrl>
-  <version>1.4.0</version>
+  <version>1.5.0</version>
   <description>COM_DECAROPROTOCOL_XML_DESCRIPTION</description>
   <namespace path="src">Xdecaro\Component\Decaroprotocol</namespace>
 
@@ -40,21 +40,7 @@
     <folder>css</folder>
   </media>
 
-  <install>
-    <sql>
-      <file driver="mysql" charset="utf8">sql/install.mysql.utf8mb4.sql</file>
-    </sql>
-  </install>
-
-  <uninstall>
-    <sql>
-      <file driver="mysql" charset="utf8">sql/uninstall.mysql.utf8mb4.sql</file>
-    </sql>
-  </uninstall>
-
-  <update>
-    <schemas>
-      <schemapath type="mysql">sql/updates/mysql</schemapath>
-    </schemas>
-  </update>
+  <install><sql><file driver="mysql" charset="utf8">sql/install.mysql.utf8mb4.sql</file></sql></install>
+  <uninstall><sql><file driver="mysql" charset="utf8">sql/uninstall.mysql.utf8mb4.sql</file></sql></uninstall>
+  <update><schemas><schemapath type="mysql">sql/updates/mysql</schemapath></schemas></update>
 </extension>
