@@ -172,9 +172,15 @@ jobs:
           cd joomla
           php cli/joomla.php extension:install --path=/tmp/protocol-old.zip -vvv
           MYSQL=(mysql --protocol=TCP -h127.0.0.1 -uroot --batch --skip-column-names joomla)
-          REGISTER_ID="$("${MYSQL[@]}" -e "SELECT id FROM prt_decaroprotocol_registers ORDER BY id LIMIT 1;")"
-          test -n "$REGISTER_ID"
-          "${MYSQL[@]}" -e "INSERT INTO prt_decaroprotocol_records (register_id,subject,status,created,created_by) VALUES (${REGISTER_ID},'Protocol legacy sentinel','draft',NOW(),0);"
+          if [ '${{ matrix.mode }}' = 'upgrade-1.4.0' ]; then
+            REGISTER_ID="$("${MYSQL[@]}" -e "SELECT id FROM prt_decaroprotocol_registers ORDER BY id LIMIT 1;")"
+            test -n "$REGISTER_ID"
+            "${MYSQL[@]}" -e "INSERT INTO prt_decaroprotocol_records (register_id,subject,status,created,created_by) VALUES (${REGISTER_ID},'Protocol legacy sentinel','draft',NOW(),0);"
+          else
+            # Protocol 1.2.0 is the historical broken-SQL fixture: Joomla may register
+            # the extension while its utf8mb4 manifest declaration prevents table creation.
+            test "$("${MYSQL[@]}" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='joomla' AND table_name='prt_decaroprotocol_records';")" = '0'
+          fi
       - name: Install Protocol 1.5.0
         shell: bash
         run: |
@@ -195,12 +201,12 @@ jobs:
           test "$("${MYSQL[@]}" -e "SELECT COUNT(*) FROM prt_extensions WHERE type='plugin' AND folder='xdecaroanalytics' AND element='decaroprotocol';")" = '1'
           P_SCHEMA="$("${MYSQL[@]}" -e "SELECT s.version_id FROM prt_schemas s JOIN prt_extensions e ON e.extension_id=s.extension_id WHERE e.type='component' AND e.element='com_decaroprotocol' LIMIT 1;")"
           test "$P_SCHEMA" = '1.5.0'
-          if [ '${{ matrix.mode }}' != 'clean' ]; then
+          if [ '${{ matrix.mode }}' = 'upgrade-1.4.0' ]; then
             test "$("${MYSQL[@]}" -e "SELECT COUNT(*) FROM prt_decaroprotocol_records WHERE subject='Protocol legacy sentinel';")" = '1'
-          else
+          elif [ '${{ matrix.mode }}' = 'clean' ]; then
             test "$("${MYSQL[@]}" -e "SELECT COUNT(*) FROM prt_extensions WHERE type='plugin' AND folder='xdecaroanalytics' AND element='decaroprotocol' AND enabled=1;")" = '1'
           fi
-          # Enable for the integration probe in upgrade modes without changing package update semantics.
+          # Enable for the integration probe in upgrade/repair modes without changing package update semantics.
           "${MYSQL[@]}" -e "UPDATE prt_extensions SET enabled=1 WHERE type='plugin' AND folder='xdecaroanalytics' AND element='decaroprotocol';"
       - name: Exercise public facade Core capabilities Documents and Analytics
         shell: bash
