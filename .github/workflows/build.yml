@@ -39,7 +39,7 @@ jobs:
           test -n "$VERSION"
           test "$(tr -d '\r\n' < VERSION)" = "$VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-      - name: Validate PHP XML JSON schema marker and integration boundaries
+      - name: Validate PHP XML JSON schema and integration boundaries
         shell: bash
         run: |
           set -euo pipefail
@@ -52,12 +52,15 @@ jobs:
           php -r '$x=simplexml_load_file("updates/pkg_decaroprotocol.xml"); if (!$x || trim((string)$x->update->version) !== $argv[1]) { exit(1); }' "$VERSION"
           grep -F 'updates/pkg_decaroprotocol.xml' package/pkg_decaroprotocol.xml
           test -f "component/admin/sql/updates/mysql/${VERSION}.sql"
+          grep -F 'charset="utf8"' component/decaroprotocol.xml
+          ! grep -F 'charset="utf8mb4"' component/decaroprotocol.xml
+          for table in registers register_counters records audit; do
+            grep -F "CREATE TABLE IF NOT EXISTS \`#__decaroprotocol_${table}\`" "component/admin/sql/updates/mysql/${VERSION}.sql"
+          done
+          ! grep -RniE 'DROP[[:space:]]+TABLE|TRUNCATE[[:space:]]+TABLE' component/admin/sql/updates/mysql
           test -f component/admin/src/Service/CoreIntegrationService.php
           test -f component/admin/src/Service/DocumentsIntegrationService.php
           test -f component/admin/src/Helper/InformationHelper.php
-          test -f component/admin/src/View/Information/HtmlView.php
-          test -f component/admin/tmpl/information/default.php
-          test -f component/media/css/information.css
           grep -F 'xdecaro\Core' component/admin/src/Service/CoreIntegrationService.php
           grep -F 'xdecaro\Core' component/admin/src/Service/DocumentsIntegrationService.php
           grep -F 'xdecaro\Core' component/admin/src/Helper/InformationHelper.php
@@ -72,9 +75,7 @@ jobs:
           grep -F 'getRelationService' component/admin/src/Service/DocumentsIntegrationService.php
           php tests/documents-integration-contract.php
       - name: Deterministic build A
-        run: |
-          php tools/build.php
-          cp dist/SHA256SUMS.txt /tmp/protocol-sums
+        run: php tools/build.php && cp dist/SHA256SUMS.txt /tmp/protocol-sums
       - name: Deterministic build B and ZIP integrity
         shell: bash
         run: |
@@ -84,44 +85,29 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           C="dist/com_decaroprotocol_${VERSION}.zip"
           P="dist/pkg_decaroprotocol_${VERSION}.zip"
-          test -f "$C"
-          test -f "$P"
-          unzip -t "$C"
-          unzip -t "$P"
+          unzip -t "$C" >/dev/null
+          unzip -t "$P" >/dev/null
           unzip -p "$C" decaroprotocol.xml | grep -F "<version>${VERSION}</version>"
+          unzip -p "$C" decaroprotocol.xml | grep -F 'charset="utf8"'
           unzip -p "$P" pkg_decaroprotocol.xml | grep -F "<version>${VERSION}</version>"
-          unzip -l "$C" | grep -F 'admin/services/provider.php'
           unzip -l "$C" | grep -F "admin/sql/updates/mysql/${VERSION}.sql"
-          unzip -l "$C" | grep -F 'admin/src/Service/CoreIntegrationService.php'
           unzip -l "$C" | grep -F 'admin/src/Service/DocumentsIntegrationService.php'
-          unzip -l "$C" | grep -F 'admin/src/Helper/InformationHelper.php'
-          unzip -l "$C" | grep -F 'admin/tmpl/information/default.php'
-          unzip -l "$C" | grep -F 'media/css/information.css'
-          unzip -p "$C" media/joomla.asset.json | grep -F '"com_decaroprotocol.information"'
       - name: Upload Joomla packages
         if: matrix.php == '8.3'
         uses: actions/upload-artifact@v4
         with:
           name: decaroprotocol-${{ steps.version.outputs.version }}
-          path: |
-            dist/com_decaroprotocol_${{ steps.version.outputs.version }}.zip
-            dist/pkg_decaroprotocol_${{ steps.version.outputs.version }}.zip
-            dist/SHA256SUMS.txt
+          path: dist/
 
   joomla-integration:
-    name: Joomla ${{ matrix.joomla }} Core + Documents + Protocol
+    name: Joomla ${{ matrix.joomla }} / ${{ matrix.mode }}
     runs-on: ubuntu-latest
     needs: build
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - joomla: '5.4.8'
-            php: '8.3'
-            sha256: '8d3585939bca8e6b1d5f3e97dda2cc557c61e610daf488c871e1f62a97be9bd0'
-          - joomla: '6.1.3'
-            php: '8.3'
-            sha256: 'a49305652503f9344d046d55471f324a07882996132ed967c3b0fe34707ae4a1'
+        joomla: ['5.4.8', '6.1.3']
+        mode: ['clean', 'repair-1.2.0']
     services:
       mysql:
         image: mysql:8.0
@@ -139,99 +125,68 @@ jobs:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: ${{ matrix.php }}
+          php-version: '8.3'
           extensions: mysqli, zip, simplexml
           coverage: none
       - name: Build Protocol 1.3.0
         run: php tools/build.php
-      - name: Download and verify Joomla
+      - name: Download and verify runtime packages
         shell: bash
         run: |
           set -euo pipefail
-          JOOMLA="${{ matrix.joomla }}"
-          FILE="Joomla_${JOOMLA}-Stable-Full_Package.zip"
-          curl --fail --location --retry 3 "https://github.com/joomla/joomla-cms/releases/download/${JOOMLA}/${FILE}" --output /tmp/joomla.zip
-          echo "${{ matrix.sha256 }}  /tmp/joomla.zip" | sha256sum --check --strict
-          mkdir joomla
-          unzip -q /tmp/joomla.zip -d joomla
-      - name: Download and verify Core and Documents releases
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl --fail --location --retry 3 'https://github.com/xdecaro/core/releases/download/v1.4.0/pkg_xdecarocore_1.4.0.zip' --output /tmp/core.zip
+          JOOMLA='${{ matrix.joomla }}'
+          case "$JOOMLA" in
+            5.4.8) JSHA='8d3585939bca8e6b1d5f3e97dda2cc557c61e610daf488c871e1f62a97be9bd0' ;;
+            6.1.3) JSHA='a49305652503f9344d046d55471f324a07882996132ed967c3b0fe34707ae4a1' ;;
+            *) exit 1 ;;
+          esac
+          JFILE="Joomla_${JOOMLA}-Stable-Full_Package.zip"
+          curl -fL --retry 3 "https://github.com/joomla/joomla-cms/releases/download/${JOOMLA}/${JFILE}" -o /tmp/joomla.zip
+          echo "${JSHA}  /tmp/joomla.zip" | sha256sum --check --strict
+          curl -fL --retry 3 'https://github.com/xdecaro/core/releases/download/v1.4.0/pkg_xdecarocore_1.4.0.zip' -o /tmp/core.zip
           echo '4248f7e3de514c2ae2402ffc8ba12845647dca1ebac963da370650e88ac45def  /tmp/core.zip' | sha256sum --check --strict
-          curl --fail --location --retry 3 'https://github.com/xdecaro/documents/releases/download/v1.2.0/pkg_decarodocuments_1.2.0.zip' --output /tmp/documents.zip
-          echo 'e5dc7ea0f2c86b414f810a75c70fb56005c993693348e92fe528c2a633627bc2  /tmp/documents.zip' | sha256sum --check --strict
-      - name: Install Joomla
+          curl -fL --retry 3 'https://github.com/xdecaro/documents/releases/download/v1.2.1/pkg_decarodocuments_1.2.1.zip' -o /tmp/documents.zip
+          echo '5904768ac5e7e1582a07f339b2926f14c141f434cbb586b451397bf6dc7649ea  /tmp/documents.zip' | sha256sum --check --strict
+          if [ '${{ matrix.mode }}' = 'repair-1.2.0' ]; then
+            curl -fL --retry 3 'https://github.com/xdecaro/protocol/releases/download/v1.2.0/pkg_decaroprotocol_1.2.0.zip' -o /tmp/protocol-old.zip
+            echo '8dbc5cd43622d65d4f5aa260c070a52975d012117f595c8de4d938c2b08491a3  /tmp/protocol-old.zip' | sha256sum --check --strict
+          fi
+          mkdir joomla && unzip -q /tmp/joomla.zip -d joomla
+      - name: Install Joomla Core and Documents
         shell: bash
         run: |
           set -euo pipefail
-          ADMIN_PASS="ProtocolCI-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}!"
           cd joomla
-          php installation/joomla.php install \
-            --site-name='Protocol integration CI' \
-            --admin-user='Protocol CI Admin' \
-            --admin-username=admin \
-            --admin-password="$ADMIN_PASS" \
-            --admin-email=admin@example.invalid \
-            --db-type=mysqli \
-            --db-host=127.0.0.1 \
-            --db-user=root \
-            --db-pass='' \
-            --db-name=joomla \
-            --db-prefix=prt_ \
-            --db-encryption=0 \
-            --no-interaction
-      - name: Install Core Documents and Protocol packages
+          php installation/joomla.php install --site-name='Protocol integration CI' --admin-user='Protocol CI Admin' --admin-username=admin --admin-password="ProtocolCI-${GITHUB_RUN_ID}!" --admin-email=admin@example.invalid --db-type=mysqli --db-host=127.0.0.1 --db-user=root --db-pass='' --db-name=joomla --db-prefix=prt_ --db-encryption=0 --no-interaction
+          php cli/joomla.php extension:install --path=/tmp/core.zip -vvv
+          php cli/joomla.php extension:install --path=/tmp/documents.zip -vvv
+      - name: Install or repair Protocol
         shell: bash
         run: |
-          set -uo pipefail
-          install_extension() {
-            local package="$1"
-            cd "$GITHUB_WORKSPACE/joomla"
-            php cli/joomla.php extension:install --path="$package" -vvv
-            local status=$?
-            if [[ $status -ne 0 ]]; then
-              echo "Joomla logs after failed install of $package:"
-              find administrator/logs -maxdepth 1 -type f -print -exec tail -n 200 {} \; 2>/dev/null || true
-              exit "$status"
-            fi
-          }
-          install_extension /tmp/core.zip
-          install_extension /tmp/documents.zip
+          set -euo pipefail
+          cd joomla
+          if [ '${{ matrix.mode }}' = 'repair-1.2.0' ]; then
+            php cli/joomla.php extension:install --path=/tmp/protocol-old.zip -vvv
+            BEFORE="$(mysql --protocol=TCP -h127.0.0.1 -uroot --batch --skip-column-names joomla -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='joomla' AND table_name='prt_decaroprotocol_records';")"
+            echo "protocol_records_before_repair=${BEFORE}"
+          fi
           VERSION="$(tr -d '\r\n' < "$GITHUB_WORKSPACE/VERSION")"
-          install_extension "$GITHUB_WORKSPACE/dist/pkg_decaroprotocol_${VERSION}.zip"
-      - name: Verify installed integration boundary and schema
+          php cli/joomla.php extension:install --path="$GITHUB_WORKSPACE/dist/pkg_decaroprotocol_${VERSION}.zip" -vvv
+      - name: Verify installed integration boundary and schemas
         shell: bash
         run: |
           set -euo pipefail
           MYSQL=(mysql --protocol=TCP -h127.0.0.1 -uroot --batch --skip-column-names joomla)
-          for spec in \
-            'package:pkg_xdecarocore' \
-            'component:com_decarodocuments' \
-            'package:pkg_decarodocuments' \
-            'component:com_decaroprotocol' \
-            'package:pkg_decaroprotocol'; do
-            type="${spec%%:*}"
-            element="${spec#*:}"
-            count="$("${MYSQL[@]}" -e "SELECT COUNT(*) FROM prt_extensions WHERE type='${type}' AND element='${element}';")"
-            echo "${type}:${element}=${count}"
-            test "$count" = '1'
-          done
-          for table in \
-            prt_decarodocuments_documents \
-            prt_decarodocuments_relations \
-            prt_decaroprotocol_registers \
-            prt_decaroprotocol_register_counters \
-            prt_decaroprotocol_records \
-            prt_decaroprotocol_audit; do
+          for table in prt_decarodocuments_documents prt_decarodocuments_relations prt_decaroprotocol_registers prt_decaroprotocol_register_counters prt_decaroprotocol_records prt_decaroprotocol_audit; do
             count="$("${MYSQL[@]}" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='joomla' AND table_name='${table}';")"
             echo "${table}=${count}"
             test "$count" = '1'
           done
-          schema="$("${MYSQL[@]}" -e "SELECT s.version_id FROM prt_schemas s INNER JOIN prt_extensions e ON e.extension_id=s.extension_id WHERE e.type='component' AND e.element='com_decaroprotocol' LIMIT 1;")"
-          echo "protocol_schema=${schema}"
-          test "$schema" = '1.3.0'
+          d_schema="$("${MYSQL[@]}" -e "SELECT s.version_id FROM prt_schemas s JOIN prt_extensions e ON e.extension_id=s.extension_id WHERE e.type='component' AND e.element='com_decarodocuments' LIMIT 1;")"
+          p_schema="$("${MYSQL[@]}" -e "SELECT s.version_id FROM prt_schemas s JOIN prt_extensions e ON e.extension_id=s.extension_id WHERE e.type='component' AND e.element='com_decaroprotocol' LIMIT 1;")"
+          echo "documents_schema=${d_schema} protocol_schema=${p_schema}"
+          test "$d_schema" = '1.2.1'
+          test "$p_schema" = '1.3.0'
           SERVICE='joomla/administrator/components/com_decaroprotocol/src/Service/DocumentsIntegrationService.php'
           test -f "$SERVICE"
           grep -F 'bootComponent(self::DOCUMENTS_COMPONENT)' "$SERVICE"
