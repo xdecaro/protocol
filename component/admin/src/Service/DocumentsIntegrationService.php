@@ -14,12 +14,14 @@ use xdecaro\Core\Integration\RelationReference;
 /**
  * Optional Protocol -> Documents adapter.
  *
- * Protocol owns validation of its record references. Documents owns document
- * persistence, ACL and relation persistence. No Documents table is read here.
+ * Protocol owns validation and authorization of its record references.
+ * Documents owns document persistence, ACL and relation persistence.
+ * No Documents table is read here.
  */
 final class DocumentsIntegrationService
 {
     public const DOCUMENTS_COMPONENT = 'com_decarodocuments';
+    public const PROTOCOL_COMPONENT = 'com_decaroprotocol';
     public const PROTOCOL_ENTITY = 'record';
     public const DEFAULT_RELATION_TYPE = 'attachment';
 
@@ -51,6 +53,7 @@ final class DocumentsIntegrationService
         int $recordId,
         string $relationType = self::DEFAULT_RELATION_TYPE
     ): void {
+        $this->assertProtocolPermission('core.edit');
         $this->assertPositiveId($documentId, 'document');
         $this->assertPositiveId($recordId, 'record');
         $this->assertRecordExists($recordId);
@@ -65,6 +68,7 @@ final class DocumentsIntegrationService
         int $recordId,
         string $relationType = self::DEFAULT_RELATION_TYPE
     ): void {
+        $this->assertProtocolPermission('core.edit');
         $this->assertPositiveId($documentId, 'document');
         $this->assertPositiveId($recordId, 'record');
         $this->assertRecordExists($recordId);
@@ -79,6 +83,7 @@ final class DocumentsIntegrationService
         int $recordId,
         ?string $relationType = self::DEFAULT_RELATION_TYPE
     ): array {
+        $this->assertProtocolPermission('core.manage');
         $this->assertPositiveId($recordId, 'record');
         $this->assertRecordExists($recordId);
 
@@ -142,6 +147,15 @@ final class DocumentsIntegrationService
                 0,
                 $exception
             );
+        }
+    }
+
+    private function assertProtocolPermission(string $action): void
+    {
+        $identity = Factory::getApplication()->getIdentity();
+
+        if (!$identity || !$identity->authorise($action, self::PROTOCOL_COMPONENT)) {
+            throw new RuntimeException('Not authorised to manage Protocol document relations.', 403);
         }
     }
 
