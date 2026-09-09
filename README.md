@@ -33,7 +33,7 @@ Il namespace deprecato `Xdecaro\Core` non viene consumato dal runtime Protocol. 
 
 ## Documents
 
-Dalla versione 1.3.0 Protocol può collegare opzionalmente documenti gestiti da Documents `1.2.0+` ai propri record di protocollo.
+Dalla versione 1.3.0 Protocol può collegare opzionalmente documenti gestiti da Documents `1.2.1+` ai propri record di protocollo. La 1.2.1 è il minimo operativo perché include la correzione Joomla del manifest SQL e la repair non distruttiva delle installazioni 1.2.0 interessate.
 
 Il contratto è intenzionalmente stretto:
 
