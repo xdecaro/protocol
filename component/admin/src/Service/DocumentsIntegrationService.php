@@ -56,7 +56,7 @@ final class DocumentsIntegrationService
         $this->assertProtocolPermission('core.edit');
         $this->assertPositiveId($documentId, 'document');
         $this->assertPositiveId($recordId, 'record');
-        $this->assertRecordExists($recordId);
+        $this->assertRecordRelationsMutable($recordId);
 
         $this->getDocumentsRelationService()->attach(
             $this->createDocumentRelation($documentId, $recordId, $relationType)
@@ -71,7 +71,7 @@ final class DocumentsIntegrationService
         $this->assertProtocolPermission('core.edit');
         $this->assertPositiveId($documentId, 'document');
         $this->assertPositiveId($recordId, 'record');
-        $this->assertRecordExists($recordId);
+        $this->assertRecordRelationsMutable($recordId);
 
         $this->getDocumentsRelationService()->detach(
             $this->createDocumentRelation($documentId, $recordId, $relationType)
@@ -161,15 +161,37 @@ final class DocumentsIntegrationService
 
     private function assertRecordExists(int $recordId): void
     {
+        if ($this->getRecordStatus($recordId) === null) {
+            throw new RuntimeException('The referenced Protocol record does not exist.');
+        }
+    }
+
+    private function assertRecordRelationsMutable(int $recordId): void
+    {
+        $status = $this->getRecordStatus($recordId);
+
+        if ($status === null) {
+            throw new RuntimeException('The referenced Protocol record does not exist.');
+        }
+
+        if ($status !== 'draft') {
+            throw new RuntimeException(
+                'Documents attached to a protocolled record are immutable; use a tracked rectification workflow.'
+            );
+        }
+    }
+
+    private function getRecordStatus(int $recordId): ?string
+    {
         $query = $this->db->getQuery(true)
-            ->select('COUNT(*)')
+            ->select($this->db->quoteName('status'))
             ->from($this->db->quoteName('#__decaroprotocol_records'))
             ->where($this->db->quoteName('id') . ' = :recordId')
             ->bind(':recordId', $recordId, ParameterType::INTEGER);
 
-        if ((int) $this->db->setQuery($query)->loadResult() !== 1) {
-            throw new RuntimeException('The referenced Protocol record does not exist.');
-        }
+        $status = $this->db->setQuery($query, 0, 1)->loadResult();
+
+        return $status === null ? null : (string) $status;
     }
 
     private function assertPositiveId(int $id, string $label): void
