@@ -11,6 +11,7 @@
 ### Changed
 - Document relations become read-only once a Protocol record is definitive; attach/detach is rejected server-side when the record is no longer `draft`.
 - Document relation write tasks require a Joomla POST CSRF token and preserve the double ACL boundary: Protocol authorizes its record and Documents authorizes document relations.
+- Protocol now enforces the documented Documents `1.2.1+` minimum using Joomla extension metadata before booting the provider service.
 - Runtime integration CI now pins the repaired Documents 1.2.2 distribution on Joomla 5.4.8 and 6.1.3.
 - Extended the cross-product contract guard to cover controller, view and template behavior while continuing to reject direct access to `#__decarodocuments_*`.
 - No changes to Protocol numbering transactions, record numbering, existing audit semantics or Core public APIs.
