@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.5.0 - 2026-09-09
+
+### Added
+- Public `ProtocolComponent` facade exposing Protocol, Documents, Analytics and optional cross-product integration services.
+- Core 1.4 `CapabilityRegistry` declarations for Protocol records, protocol assignment, query, Documents, Analytics, Notifications and Tasks integration surfaces.
+- Protocol-owned Analytics metrics and datasets plus the optional `xdecaroanalytics/decaroprotocol` provider plugin.
+- Optional API-only bridges to Notifications and Tasks; Protocol never reads or writes their private database tables.
+- Diagnostics for People, Organizations, Notifications, Tasks, Analytics and the Protocol Analytics plugin.
+
+### Changed
+- Core integration minimum for shared contracts is now Core by xdecaro 1.4.0.
+- Package now ships the Analytics provider plugin; it is enabled on first install only and administrator enabled/disabled state is preserved during updates.
+- 1.5.0 has no Protocol database schema change; the update file is a non-destructive schema-version marker.
+- Existing numbering, register counters, Draft → Protocol transaction, audit semantics and Documents attachment immutability are unchanged.
+
 ## 1.4.0 - 2026-09-09
 
 ### Added
