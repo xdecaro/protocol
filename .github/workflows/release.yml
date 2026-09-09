@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths:
       - VERSION
-      - .github/workflows/release.yml
   workflow_dispatch:
 
 permissions:
@@ -19,6 +18,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
+          extensions: zip, simplexml
           coverage: none
       - name: Read version
         run: echo "VERSION=$(tr -d '\r\n' < VERSION)" >> "$GITHUB_ENV"
@@ -30,34 +30,26 @@ jobs:
             echo "Release v${VERSION} already exists"
             exit 1
           fi
-      - name: Validate release metadata Core Documents and SQL boundaries
+      - name: Validate release metadata and boundaries
         shell: bash
         run: |
           set -euo pipefail
-          find component tools tests -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          test "$VERSION" = '1.5.0'
+          find component plugins package tools tests -type f -name '*.php' -print0 | xargs -0 -n1 php -l
           while IFS= read -r -d '' FILE; do
-            php -r 'libxml_use_internal_errors(true); if (simplexml_load_file($argv[1]) === false) { exit(1); }' "$FILE"
-          done < <(find component package updates -type f -name '*.xml' -print0)
-          php -r '$c=simplexml_load_file("component/decaroprotocol.xml"); $p=simplexml_load_file("package/pkg_decaroprotocol.xml"); $u=simplexml_load_file("updates/pkg_decaroprotocol.xml"); if (trim((string)$c->version) !== $argv[1] || trim((string)$p->version) !== $argv[1] || trim((string)$u->update->version) !== $argv[1]) { exit(1); }' "$VERSION"
+            php -r 'libxml_use_internal_errors(true); if (simplexml_load_file($argv[1]) === false) exit(1);' "$FILE"
+          done < <(find component plugins package updates -type f -name '*.xml' -print0)
+          php -r '$c=simplexml_load_file("component/decaroprotocol.xml"); $p=simplexml_load_file("plugins/xdecaroanalytics/decaroprotocol/decaroprotocol.xml"); $pkg=simplexml_load_file("package/pkg_decaroprotocol.xml"); $u=simplexml_load_file("updates/pkg_decaroprotocol.xml"); foreach([$c,$p,$pkg,$u->update] as $x){if(trim((string)$x->version)!==$argv[1]) exit(1);}' "$VERSION"
           test -f "component/admin/sql/updates/mysql/${VERSION}.sql"
           grep -F 'charset="utf8"' component/decaroprotocol.xml
           ! grep -F 'charset="utf8mb4"' component/decaroprotocol.xml
-          for table in registers register_counters records audit; do
-            grep -F "CREATE TABLE IF NOT EXISTS \`#__decaroprotocol_${table}\`" "component/admin/sql/updates/mysql/${VERSION}.sql"
-          done
           ! grep -RniE 'DROP[[:space:]]+TABLE|TRUNCATE[[:space:]]+TABLE' component/admin/sql/updates/mysql
-          test -f component/admin/src/Service/DocumentsIntegrationService.php
-          grep -F 'xdecaro\Core' component/admin/src/Service/CoreIntegrationService.php
-          grep -F 'xdecaro\Core' component/admin/src/Service/DocumentsIntegrationService.php
-          grep -F 'xdecaro\Core' component/admin/src/Helper/InformationHelper.php
-          ! grep -RInF 'Xdecaro\Core' component/admin/src component/admin/services
-          ! grep -RInF '#__decarodocuments_' component
-          ! grep -RInF 'com_decarodcl' component
-          grep -F 'bootComponent(self::DOCUMENTS_COMPONENT)' component/admin/src/Service/DocumentsIntegrationService.php
-          grep -F 'getRelationService' component/admin/src/Service/DocumentsIntegrationService.php
-          grep -F 'assertRecordRelationsMutable' component/admin/src/Service/DocumentsIntegrationService.php
-          grep -F "Session::checkToken('post')" component/admin/src/Controller/RecordController.php
+          grep -F "MINIMUM_CORE_VERSION = '1.4.0'" component/admin/src/Service/CoreIntegrationService.php
+          grep -F 'CapabilityRegistry' component/admin/src/Service/CoreIntegrationService.php
+          grep -F 'ProtocolComponent' component/admin/services/provider.php
+          ! grep -RInE '#__(decarodocuments|xdecaronotifications|xdecarotasks|xdecaroanalytics)_' component/admin/src/Service
           php tests/documents-integration-contract.php
+          php tests/public-integration-contract.php
       - name: Build deterministic packages
         run: |
           php tools/build.php
@@ -65,19 +57,20 @@ jobs:
           php tools/build.php
           diff -u /tmp/protocol-sums dist/SHA256SUMS.txt
           for file in dist/*.zip; do unzip -t "$file" >/dev/null; done
-          unzip -p "dist/com_decaroprotocol_${VERSION}.zip" decaroprotocol.xml | grep -F 'charset="utf8"'
-          unzip -l "dist/com_decaroprotocol_${VERSION}.zip" | grep -F 'admin/src/Service/DocumentsIntegrationService.php'
-          unzip -l "dist/com_decaroprotocol_${VERSION}.zip" | grep -F "admin/sql/updates/mysql/${VERSION}.sql"
+          unzip -l "dist/pkg_decaroprotocol_${VERSION}.zip" | grep -F "packages/com_decaroprotocol_${VERSION}.zip"
+          unzip -l "dist/pkg_decaroprotocol_${VERSION}.zip" | grep -F "packages/plg_xdecaroanalytics_decaroprotocol_${VERSION}.zip"
+          unzip -l "dist/pkg_decaroprotocol_${VERSION}.zip" | grep -F 'script.php'
       - name: Publish release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "v${VERSION}" \
             "dist/com_decaroprotocol_${VERSION}.zip" \
+            "dist/plg_xdecaroanalytics_decaroprotocol_${VERSION}.zip" \
             "dist/pkg_decaroprotocol_${VERSION}.zip" \
             "dist/SHA256SUMS.txt" \
             --title "Protocol by xdecaro ${VERSION}" \
-            --notes "Protocol ${VERSION} exposes the existing provider-owned Documents relation contract in the Protocol record editor. Saved drafts can link or unlink existing Documents records; definitive protocols keep their linked attachments readable/downloadable but reject relation changes server-side. Write tasks require Joomla CSRF validation, Protocol keeps record ACL/state ownership, Documents keeps document ACL/storage/relation persistence, and no private Documents tables are consumed by Protocol."
+            --notes "Protocol ${VERSION}: public component service facade, Core 1.4 capabilities, optional Notifications/Tasks API bridges and Protocol-owned Analytics provider. Existing numbering transactions, audit semantics and Documents attachment immutability are preserved; no cross-product private tables are consumed."
       - name: Publish package checksum
         shell: bash
         run: |
