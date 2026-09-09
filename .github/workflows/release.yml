@@ -30,20 +30,32 @@ jobs:
             echo "Release v${VERSION} already exists"
             exit 1
           fi
-      - name: Validate release metadata and Core boundary
+      - name: Validate release metadata Core Documents and SQL boundaries
         shell: bash
         run: |
           set -euo pipefail
-          find component tools -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          find component tools tests -type f -name '*.php' -print0 | xargs -0 -n1 php -l
           while IFS= read -r -d '' FILE; do
             php -r 'libxml_use_internal_errors(true); if (simplexml_load_file($argv[1]) === false) { exit(1); }' "$FILE"
           done < <(find component package updates -type f -name '*.xml' -print0)
           php -r '$c=simplexml_load_file("component/decaroprotocol.xml"); $p=simplexml_load_file("package/pkg_decaroprotocol.xml"); $u=simplexml_load_file("updates/pkg_decaroprotocol.xml"); if (trim((string)$c->version) !== $argv[1] || trim((string)$p->version) !== $argv[1] || trim((string)$u->update->version) !== $argv[1]) { exit(1); }' "$VERSION"
           test -f "component/admin/sql/updates/mysql/${VERSION}.sql"
+          grep -F 'charset="utf8"' component/decaroprotocol.xml
+          ! grep -F 'charset="utf8mb4"' component/decaroprotocol.xml
+          for table in registers register_counters records audit; do
+            grep -F "CREATE TABLE IF NOT EXISTS \`#__decaroprotocol_${table}\`" "component/admin/sql/updates/mysql/${VERSION}.sql"
+          done
+          ! grep -RniE 'DROP[[:space:]]+TABLE|TRUNCATE[[:space:]]+TABLE' component/admin/sql/updates/mysql
+          test -f component/admin/src/Service/DocumentsIntegrationService.php
           grep -F 'xdecaro\Core' component/admin/src/Service/CoreIntegrationService.php
+          grep -F 'xdecaro\Core' component/admin/src/Service/DocumentsIntegrationService.php
           grep -F 'xdecaro\Core' component/admin/src/Helper/InformationHelper.php
-          ! grep -F 'Xdecaro\Core' component/admin/src/Service/CoreIntegrationService.php
-          ! grep -F 'Xdecaro\Core' component/admin/src/Helper/InformationHelper.php
+          ! grep -RInF 'Xdecaro\Core' component/admin/src component/admin/services
+          ! grep -RInF '#__decarodocuments_' component
+          ! grep -RInF 'com_decarodcl' component
+          grep -F 'bootComponent(self::DOCUMENTS_COMPONENT)' component/admin/src/Service/DocumentsIntegrationService.php
+          grep -F 'getRelationService' component/admin/src/Service/DocumentsIntegrationService.php
+          php tests/documents-integration-contract.php
       - name: Build deterministic packages
         run: |
           php tools/build.php
@@ -51,6 +63,9 @@ jobs:
           php tools/build.php
           diff -u /tmp/protocol-sums dist/SHA256SUMS.txt
           for file in dist/*.zip; do unzip -t "$file" >/dev/null; done
+          unzip -p "dist/com_decaroprotocol_${VERSION}.zip" decaroprotocol.xml | grep -F 'charset="utf8"'
+          unzip -l "dist/com_decaroprotocol_${VERSION}.zip" | grep -F 'admin/src/Service/DocumentsIntegrationService.php'
+          unzip -l "dist/com_decaroprotocol_${VERSION}.zip" | grep -F "admin/sql/updates/mysql/${VERSION}.sql"
       - name: Publish release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -60,20 +75,26 @@ jobs:
             "dist/pkg_decaroprotocol_${VERSION}.zip" \
             "dist/SHA256SUMS.txt" \
             --title "Protocol by xdecaro ${VERSION}" \
-            --notes "Protocol ${VERSION} migrates optional Core consumption to the canonical xdecaro\\Core namespace and requires Core 1.3.0+ only for Core-backed features. Protocol numbering, registers, records and audit behavior remain unchanged."
+            --notes "Protocol ${VERSION} adds optional provider-owned Documents 1.2.1+ relation integration through Core EntityReference/RelationReference and repairs Protocol SQL installation compatibility non-destructively. Protocol keeps ownership of records, numbering and ACL; Documents keeps storage, document ACL and relation persistence ownership."
       - name: Publish package checksum
+        shell: bash
         run: |
+          set -euo pipefail
           export PACKAGE_SHA="$(sha256sum "dist/pkg_decaroprotocol_${VERSION}.zip" | awk '{print $1}')"
           python3 - <<'PY'
           import os, re
           from pathlib import Path
           path = Path('updates/pkg_decaroprotocol.xml')
           text = path.read_text()
-          text = re.sub(r'<sha256>[^<]*</sha256>', f'<sha256>{os.environ["PACKAGE_SHA"]}</sha256>', text, count=1)
-          path.write_text(text)
+          updated, count = re.subn(r'<sha256>[^<]*</sha256>', f'<sha256>{os.environ["PACKAGE_SHA"]}</sha256>', text, count=1)
+          if count != 1:
+              raise SystemExit('Protocol update feed SHA-256 tag was not found')
+          path.write_text(updated)
           PY
+          grep -F "<sha256>${PACKAGE_SHA}</sha256>" updates/pkg_decaroprotocol.xml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add updates/pkg_decaroprotocol.xml
           git diff --cached --quiet || git commit -m "Publish SHA-256 for Protocol ${VERSION}"
-          git push
+          git pull --rebase origin main
+          git push origin HEAD:main
